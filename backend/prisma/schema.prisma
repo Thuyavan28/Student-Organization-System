@@ -1,0 +1,546 @@
+// ClubFlow Prisma schema. The database is SQL-first: prisma/sql/clubflow_schema_and_seed.sql
+// creates the tables, and this file mirrors them (introspected with `prisma db pull`).
+// Models are PascalCase and fields camelCase, mapped onto snake_case tables and columns.
+// Check constraints and the partial unique index on bookings live only in the SQL file.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  name         String     @db.VarChar(120)
+  email        String     @unique @db.VarChar(190)
+  passwordHash String     @map("password_hash") @db.VarChar(100)
+  role         user_role  @default(MEMBER)
+  previousRole user_role? @map("previous_role")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  member            Member?
+  announcements     Announcement[]
+  bookings          Booking[]
+  checkIns          CheckIn[]
+  submittedExpenses Expense[]      @relation("ExpenseSubmittedBy")
+  reviewedExpenses  Expense[]      @relation("ExpenseReviewedBy")
+  fundraisers       Fundraiser[]
+  leadership        Leadership[]
+  orders            Order[]
+  assignedTasks     Task[]         @relation("TaskAssignee")
+  createdTasks      Task[]         @relation("TaskCreatedBy")
+  transactions      Transaction[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model MembershipTier {
+  id                   Int      @id @default(autoincrement())
+  name                 String   @unique @db.VarChar(60)
+  duesAmount           Int      @map("dues_amount")
+  durationMonths       Int      @default(12) @map("duration_months")
+  eventDiscountPercent Int      @default(0) @map("event_discount_percent")
+  merchDiscountPercent Int      @default(0) @map("merch_discount_percent")
+  perksText            String   @default("") @map("perks_text")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  members  Member[]
+  payments MembershipPayment[]
+
+  @@map("membership_tiers")
+}
+
+model Member {
+  id                    Int               @id @default(autoincrement())
+  userId                Int               @unique @map("user_id")
+  studentId             String            @unique @map("student_id") @db.VarChar(40)
+  department            String            @db.VarChar(120)
+  year                  Int
+  phone                 String            @db.VarChar(30)
+  tierId                Int               @map("tier_id")
+  membershipStatus      membership_status @default(PENDING) @map("membership_status")
+  joinedAt              DateTime          @default(now()) @map("joined_at") @db.Timestamptz(3)
+  expiresAt             DateTime?         @map("expires_at") @db.Timestamptz(3)
+  duesPaid              Boolean           @default(false) @map("dues_paid")
+  lastRenewalReminderAt DateTime?         @map("last_renewal_reminder_at") @db.Timestamptz(3)
+  createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tier     MembershipTier      @relation(fields: [tierId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payments MembershipPayment[]
+
+  @@index([expiresAt])
+  @@index([membershipStatus], map: "members_status_idx")
+  @@index([tierId])
+  @@map("members")
+}
+
+model MembershipPayment {
+  id          Int            @id @default(autoincrement())
+  memberId    Int            @map("member_id")
+  tierId      Int            @map("tier_id")
+  amount      Int
+  paymentMode payment_mode   @default(SIMULATED) @map("payment_mode")
+  status      payment_status @default(PENDING)
+  paidAt      DateTime?      @map("paid_at") @db.Timestamptz(3)
+  periodStart DateTime       @map("period_start") @db.Timestamptz(3)
+  periodEnd   DateTime       @map("period_end") @db.Timestamptz(3)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  member Member         @relation(fields: [memberId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tier   MembershipTier @relation(fields: [tierId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([memberId])
+  @@index([status])
+  @@index([tierId])
+  @@map("membership_payments")
+}
+
+model Event {
+  id              Int          @id @default(autoincrement())
+  title           String       @db.VarChar(160)
+  description     String       @default("")
+  venue           String       @db.VarChar(160)
+  startAt         DateTime     @map("start_at") @db.Timestamptz(3)
+  endAt           DateTime     @map("end_at") @db.Timestamptz(3)
+  bookingOpensAt  DateTime     @map("booking_opens_at") @db.Timestamptz(3)
+  bookingClosesAt DateTime     @map("booking_closes_at") @db.Timestamptz(3)
+  capacity        Int
+  memberPrice     Int          @map("member_price")
+  nonMemberPrice  Int          @map("non_member_price")
+  status          event_status @default(DRAFT)
+  bannerUrl       String?      @map("banner_url") @db.VarChar(500)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  bookings     Booking[]
+  expenses     Expense[]
+  tasks        Task[]
+  transactions Transaction[]
+
+  @@index([startAt])
+  @@index([status])
+  @@map("events")
+}
+
+// The SQL file also creates a partial unique index on (event_id, user_id) WHERE status = 'CONFIRMED'.
+model Booking {
+  id              Int            @id @default(autoincrement())
+  eventId         Int            @map("event_id")
+  userId          Int            @map("user_id")
+  priceAtBooking  Int            @map("price_at_booking")
+  discountApplied Int            @default(0) @map("discount_applied")
+  isMemberPrice   Boolean        @default(false) @map("is_member_price")
+  status          booking_status @default(CONFIRMED)
+  paymentStatus   payment_status @default(PAID) @map("payment_status")
+  paymentMode     payment_mode   @default(SIMULATED) @map("payment_mode")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  ticket Ticket?
+
+  @@index([eventId])
+  @@index([status])
+  @@index([userId])
+  @@map("bookings")
+}
+
+model Ticket {
+  id        Int           @id @default(autoincrement())
+  bookingId Int           @unique @map("booking_id")
+  token     String        @unique @db.VarChar(64)
+  status    ticket_status @default(VALID)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  booking Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  checkIn CheckIn?
+
+  @@index([status])
+  @@map("tickets")
+}
+
+model CheckIn {
+  id                       Int      @id @default(autoincrement())
+  ticketId                 Int      @unique @map("ticket_id")
+  checkedInById            Int      @map("checked_in_by_id")
+  checkedInAt              DateTime @default(now()) @map("checked_in_at") @db.Timestamptz(3)
+  membershipVerifiedActive Boolean  @default(false) @map("membership_verified_active")
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  checkedInBy User   @relation(fields: [checkedInById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ticket      Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([checkedInById])
+  @@map("check_ins")
+}
+
+model Announcement {
+  id                  Int       @id @default(autoincrement())
+  title               String    @db.VarChar(200)
+  body                String
+  audience            audience  @default(ALL_MEMBERS)
+  authorId            Int       @map("author_id")
+  isPinned            Boolean   @default(false) @map("is_pinned")
+  emailSent           Boolean   @default(false) @map("email_sent")
+  emailRecipientCount Int       @default(0) @map("email_recipient_count")
+  publishedAt         DateTime  @default(now()) @map("published_at") @db.Timestamptz(3)
+  archivedAt          DateTime? @map("archived_at") @db.Timestamptz(3)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  author    User       @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  emailLogs EmailLog[]
+
+  @@index([authorId])
+  @@index([publishedAt])
+  @@map("announcements")
+}
+
+model EmailLog {
+  id             Int          @id @default(autoincrement())
+  announcementId Int?         @map("announcement_id")
+  subject        String       @default("") @db.VarChar(200)
+  recipientCount Int          @default(0) @map("recipient_count")
+  status         email_status
+  sentAt         DateTime     @default(now()) @map("sent_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  announcement Announcement? @relation(fields: [announcementId], references: [id], onUpdate: NoAction)
+
+  @@index([announcementId])
+  @@index([status])
+  @@map("email_logs")
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(120)
+  description String   @default("")
+  basePrice   Int      @map("base_price")
+  imageUrl    String?  @map("image_url") @db.VarChar(500)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  variants ProductVariant[]
+
+  @@index([isActive])
+  @@map("products")
+}
+
+model ProductVariant {
+  id        Int          @id @default(autoincrement())
+  productId Int          @map("product_id")
+  size      garment_size
+  stock     Int          @default(0)
+  sku       String       @unique @db.VarChar(40)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  orderItems OrderItem[]
+
+  @@unique([productId, size])
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model Order {
+  id            Int            @id @default(autoincrement())
+  userId        Int            @map("user_id")
+  subtotal      Int
+  discountTotal Int            @default(0) @map("discount_total")
+  total         Int
+  status        order_status   @default(PLACED)
+  paymentStatus payment_status @default(PENDING) @map("payment_status")
+  paymentMode   payment_mode   @default(SIMULATED) @map("payment_mode")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  items OrderItem[]
+
+  @@index([status])
+  @@index([userId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id              Int      @id @default(autoincrement())
+  orderId         Int      @map("order_id")
+  variantId       Int      @map("variant_id")
+  quantity        Int
+  unitPrice       Int      @map("unit_price")
+  discountApplied Int      @default(0) @map("discount_applied")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([orderId])
+  @@index([variantId])
+  @@map("order_items")
+}
+
+model Fundraiser {
+  id          Int               @id @default(autoincrement())
+  title       String            @db.VarChar(160)
+  description String            @default("")
+  goalAmount  Int               @map("goal_amount")
+  startDate   DateTime          @map("start_date") @db.Timestamptz(3)
+  endDate     DateTime          @map("end_date") @db.Timestamptz(3)
+  status      fundraiser_status @default(PLANNING)
+  createdById Int               @map("created_by_id")
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  createdBy    User          @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  expenses     Expense[]
+  tasks        Task[]
+  transactions Transaction[]
+
+  @@index([createdById])
+  @@index([status])
+  @@map("fundraisers")
+}
+
+model Task {
+  id           Int         @id @default(autoincrement())
+  fundraiserId Int?        @map("fundraiser_id")
+  eventId      Int?        @map("event_id")
+  title        String      @db.VarChar(160)
+  description  String      @default("")
+  assigneeId   Int?        @map("assignee_id")
+  dueDate      DateTime?   @map("due_date") @db.Timestamptz(3)
+  status       task_status @default(PENDING)
+  createdById  Int         @map("created_by_id")
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  assignee   User?       @relation("TaskAssignee", fields: [assigneeId], references: [id], onUpdate: NoAction)
+  createdBy  User        @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  event      Event?      @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  fundraiser Fundraiser? @relation(fields: [fundraiserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([assigneeId])
+  @@index([eventId])
+  @@index([fundraiserId])
+  @@index([status])
+  @@map("tasks")
+}
+
+model Expense {
+  id            Int            @id @default(autoincrement())
+  submittedById Int            @map("submitted_by_id")
+  eventId       Int?           @map("event_id")
+  fundraiserId  Int?           @map("fundraiser_id")
+  category      txn_category
+  amount        Int
+  description   String
+  receiptUrl    String?        @map("receipt_url") @db.VarChar(500)
+  status        expense_status @default(SUBMITTED)
+  reviewedById  Int?           @map("reviewed_by_id")
+  reviewNote    String?        @map("review_note")
+  reimbursedAt  DateTime?      @map("reimbursed_at") @db.Timestamptz(3)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  event       Event?      @relation(fields: [eventId], references: [id], onUpdate: NoAction)
+  fundraiser  Fundraiser? @relation(fields: [fundraiserId], references: [id], onUpdate: NoAction)
+  reviewedBy  User?       @relation("ExpenseReviewedBy", fields: [reviewedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  submittedBy User        @relation("ExpenseSubmittedBy", fields: [submittedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([eventId])
+  @@index([fundraiserId])
+  @@index([reviewedById])
+  @@index([status])
+  @@index([submittedById])
+  @@map("expenses")
+}
+
+model Transaction {
+  id           Int          @id @default(autoincrement())
+  type         txn_type
+  category     txn_category
+  amount       Int
+  description  String
+  eventId      Int?         @map("event_id")
+  fundraiserId Int?         @map("fundraiser_id")
+  sourceType   txn_source   @map("source_type")
+  sourceId     String       @map("source_id") @db.VarChar(64)
+  occurredAt   DateTime     @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  recordedById Int?         @map("recorded_by_id")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  event      Event?      @relation(fields: [eventId], references: [id], onUpdate: NoAction)
+  fundraiser Fundraiser? @relation(fields: [fundraiserId], references: [id], onUpdate: NoAction)
+  recordedBy User?       @relation(fields: [recordedById], references: [id], onUpdate: NoAction)
+
+  @@unique([sourceType, sourceId])
+  @@index([category])
+  @@index([eventId])
+  @@index([fundraiserId])
+  @@index([occurredAt])
+  @@index([recordedById])
+  @@index([type])
+  @@map("transactions")
+}
+
+model Leadership {
+  id        Int                 @id @default(autoincrement())
+  userId    Int                 @map("user_id")
+  position  leadership_position
+  termStart DateTime            @map("term_start") @db.Timestamptz(3)
+  termEnd   DateTime            @map("term_end") @db.Timestamptz(3)
+  isActive  Boolean             @default(true) @map("is_active")
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([isActive])
+  @@index([userId])
+  @@map("leadership")
+}
+
+enum audience {
+  ALL_MEMBERS
+  ALL_USERS
+}
+
+enum booking_status {
+  CONFIRMED
+  CANCELLED
+}
+
+enum email_status {
+  SENT
+  LOGGED
+  FAILED
+}
+
+enum event_status {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum expense_status {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  REIMBURSED
+}
+
+enum fundraiser_status {
+  PLANNING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum garment_size {
+  S
+  M
+  L
+  XL
+  XXL
+  ONE_SIZE
+}
+
+enum leadership_position {
+  PRESIDENT
+  VICE_PRESIDENT
+  TREASURER
+  SECRETARY
+  EVENT_LEAD
+  OTHER
+}
+
+enum membership_status {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum order_status {
+  PLACED
+  PAID
+  FULFILLED
+  CANCELLED
+}
+
+enum payment_mode {
+  SIMULATED
+}
+
+enum payment_status {
+  PAID
+  PENDING
+  REFUNDED
+}
+
+enum task_status {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum ticket_status {
+  VALID
+  USED
+  CANCELLED
+}
+
+enum txn_category {
+  DUES
+  TICKETS
+  MERCHANDISE
+  FUNDRAISER
+  DONATION
+  VENUE
+  FOOD
+  SUPPLIES
+  MARKETING
+  REIMBURSEMENT
+  OTHER
+}
+
+enum txn_source {
+  MEMBERSHIP_PAYMENT
+  BOOKING
+  ORDER
+  EXPENSE
+  MANUAL
+}
+
+enum txn_type {
+  INCOME
+  EXPENSE
+}
+
+enum user_role {
+  ADMIN
+  TREASURER
+  VOLUNTEER
+  MEMBER
+}
