@@ -3,6 +3,7 @@ import { LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { navItemsFor } from '../../utils/constants';
+import { preloadRoute } from '../../routes/routeConfig';
 import UserPanel from './UserPanel';
 
 const STORAGE_KEY = 'clubflow.sidebar.collapsed';
@@ -61,6 +62,8 @@ export default function Sidebar() {
             to={item.to}
             end={item.end}
             title={collapsed ? item.label : undefined}
+            onMouseEnter={() => preloadRoute(item.to)}
+            onFocus={() => preloadRoute(item.to)}
             className={({ isActive }) =>
               `flex items-center rounded-xl border text-sm font-medium transition-colors ${
                 collapsed ? 'justify-center px-0 py-2' : 'gap-3 px-3.5 py-2'

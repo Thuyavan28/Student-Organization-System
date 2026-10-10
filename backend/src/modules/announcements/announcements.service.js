@@ -1,11 +1,17 @@
 import { prisma } from '../../config/prisma.js';
 import { notFound } from '../../utils/apiError.js';
+import * as cache from '../../utils/memoryCache.js';
 import { sendBulkEmail } from '../../utils/mailer.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
 import { membershipsService } from '../memberships/memberships.service.js';
 
 const STAFF_ROLES = ['ADMIN', 'TREASURER', 'VOLUNTEER'];
 const authorSelect = { select: { id: true, name: true } };
+const FEED_TTL_SECONDS = 30;
+
+function invalidateFeed() {
+  cache.delByPrefix('announcements:');
+}
 
 // Anonymous visitors and plain users see announcements for everyone; active members and staff
 // also see member-only posts.
@@ -34,18 +40,22 @@ async function requireOne(id) {
 export const announcementsService = {
   async list(query, user) {
     const page = parsePagination(query, 10);
-    const where = { archivedAt: null, audience: { in: await visibleAudiences(user) } };
-    const [rows, total] = await Promise.all([
-      prisma.announcement.findMany({
-        where,
-        include: { author: authorSelect },
-        orderBy: [{ isPinned: 'desc' }, { publishedAt: 'desc' }],
-        skip: page.skip,
-        take: page.take,
-      }),
-      prisma.announcement.count({ where }),
-    ]);
-    return paginated(rows, total, page);
+    const audiences = await visibleAudiences(user);
+    const where = { archivedAt: null, audience: { in: audiences } };
+    // The feed is the same for everyone who may see the same audiences, so it is cached per audience set.
+    return cache.wrap(`announcements:feed:${audiences.join(',')}:${page.skip}:${page.take}`, FEED_TTL_SECONDS, async () => {
+      const [rows, total] = await Promise.all([
+        prisma.announcement.findMany({
+          where,
+          include: { author: authorSelect },
+          orderBy: [{ isPinned: 'desc' }, { publishedAt: 'desc' }],
+          skip: page.skip,
+          take: page.take,
+        }),
+        prisma.announcement.count({ where }),
+      ]);
+      return paginated(rows, total, page);
+    });
   },
 
   async history(query) {
@@ -86,18 +96,23 @@ export const announcementsService = {
         data: { announcementId: announcement.id, subject: body.title, recipientCount: result.count, status: result.status },
       }),
     ]);
+    invalidateFeed();
     return updated;
   },
 
   async update(id, body) {
     await requireOne(id);
-    return prisma.announcement.update({ where: { id }, data: body, include: { author: authorSelect } });
+    const updated = await prisma.announcement.update({ where: { id }, data: body, include: { author: authorSelect } });
+    invalidateFeed();
+    return updated;
   },
 
   // Announcements are never deleted; archiving hides them from the feed but keeps the history.
   async archive(id) {
     const existing = await requireOne(id);
     if (existing.archivedAt) return existing;
-    return prisma.announcement.update({ where: { id }, data: { archivedAt: new Date() } });
+    const archived = await prisma.announcement.update({ where: { id }, data: { archivedAt: new Date() } });
+    invalidateFeed();
+    return archived;
   },
 };

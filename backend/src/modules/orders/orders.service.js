@@ -2,6 +2,7 @@ import { env } from '../../config/env.js';
 import { prisma } from '../../config/prisma.js';
 import { badRequest, conflict, notFound } from '../../utils/apiError.js';
 import { applyPercentDiscount } from '../../utils/money.js';
+import * as cache from '../../utils/memoryCache.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
 import { notificationsService } from '../notifications/notifications.service.js';
 import { membershipsService } from '../memberships/memberships.service.js';
@@ -115,9 +116,17 @@ async function cancel(id, actorId) {
   });
 }
 
+// An order changes product stock and the ledger, so the cached product list and totals must be dropped.
+function invalidateOrderCaches() {
+  cache.delByPrefix('products:');
+  cache.delByPrefix('dashboard:');
+  cache.delByPrefix('finance:');
+}
+
 export const ordersService = {
   async create(userId, items) {
     const order = await prisma.$transaction((tx) => placeOrder(tx, userId, mergeLines(items)));
+    invalidateOrderCaches();
     // Sent after the order is saved and not awaited, so a slow mail server never delays or fails the purchase.
     if (env.NODE_ENV !== 'test') notificationsService.orderPlaced(order);
     return order;
@@ -152,7 +161,9 @@ export const ordersService = {
     return paginated(rows, total, page);
   },
 
-  updateStatus(id, status, actor) {
-    return status === 'FULFILLED' ? fulfil(id) : cancel(id, actor.id);
+  async updateStatus(id, status, actor) {
+    const order = await (status === 'FULFILLED' ? fulfil(id) : cancel(id, actor.id));
+    invalidateOrderCaches();
+    return order;
   },
 };

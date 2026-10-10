@@ -3,37 +3,45 @@ import { ROLES } from '../utils/constants';
 
 const { ADMIN, TREASURER, VOLUNTEER } = ROLES;
 
-const Landing = lazy(() => import('../pages/public/Landing'));
-const Events = lazy(() => import('../pages/public/Events'));
-const EventDetail = lazy(() => import('../pages/public/EventDetail'));
-const Announcements = lazy(() => import('../pages/public/Announcements'));
-const Shop = lazy(() => import('../pages/public/Shop'));
-const Login = lazy(() => import('../pages/public/Login'));
-const Register = lazy(() => import('../pages/public/Register'));
-const MobilePay = lazy(() => import('../pages/public/MobilePay'));
+// lazy() plus a preload() hook, so a page's code can be fetched before the user opens it.
+const loaders = new Map();
+function lazyPage(loader) {
+  const Component = lazy(loader);
+  loaders.set(Component, loader);
+  return Component;
+}
 
-const MyProfile = lazy(() => import('../pages/member/MyProfile'));
-const MyTickets = lazy(() => import('../pages/member/MyTickets'));
-const MyOrders = lazy(() => import('../pages/member/MyOrders'));
-const MyExpenses = lazy(() => import('../pages/member/MyExpenses'));
+const Landing = lazyPage(() => import('../pages/public/Landing'));
+const Events = lazyPage(() => import('../pages/public/Events'));
+const EventDetail = lazyPage(() => import('../pages/public/EventDetail'));
+const Announcements = lazyPage(() => import('../pages/public/Announcements'));
+const Shop = lazyPage(() => import('../pages/public/Shop'));
+const Login = lazyPage(() => import('../pages/public/Login'));
+const Register = lazyPage(() => import('../pages/public/Register'));
+const MobilePay = lazyPage(() => import('../pages/public/MobilePay'));
 
-const Dashboard = lazy(() => import('../pages/admin/Dashboard'));
-const Members = lazy(() => import('../pages/admin/Members'));
-const Staff = lazy(() => import('../pages/admin/Staff'));
-const AdminEvents = lazy(() => import('../pages/admin/Events'));
-const EventBookings = lazy(() => import('../pages/admin/EventBookings'));
-const CheckIn = lazy(() => import('../pages/admin/CheckIn'));
-const AdminAnnouncements = lazy(() => import('../pages/admin/Announcements'));
-const Merchandise = lazy(() => import('../pages/admin/Merchandise'));
-const Orders = lazy(() => import('../pages/admin/Orders'));
-const Fundraisers = lazy(() => import('../pages/admin/Fundraisers'));
-const FundraiserDetail = lazy(() => import('../pages/admin/FundraiserDetail'));
-const Finance = lazy(() => import('../pages/admin/finance'));
-const Expenses = lazy(() => import('../pages/admin/Expenses'));
-const Leadership = lazy(() => import('../pages/admin/Leadership'));
-const Settings = lazy(() => import('../pages/admin/Settings'));
+const MyProfile = lazyPage(() => import('../pages/member/MyProfile'));
+const MyTickets = lazyPage(() => import('../pages/member/MyTickets'));
+const MyOrders = lazyPage(() => import('../pages/member/MyOrders'));
+const MyExpenses = lazyPage(() => import('../pages/member/MyExpenses'));
 
-const SystemStatesShowcase = lazy(() => import('../pages/public/SystemStatesShowcase'));
+const Dashboard = lazyPage(() => import('../pages/admin/Dashboard'));
+const Members = lazyPage(() => import('../pages/admin/Members'));
+const Staff = lazyPage(() => import('../pages/admin/Staff'));
+const AdminEvents = lazyPage(() => import('../pages/admin/Events'));
+const EventBookings = lazyPage(() => import('../pages/admin/EventBookings'));
+const CheckIn = lazyPage(() => import('../pages/admin/CheckIn'));
+const AdminAnnouncements = lazyPage(() => import('../pages/admin/Announcements'));
+const Merchandise = lazyPage(() => import('../pages/admin/Merchandise'));
+const Orders = lazyPage(() => import('../pages/admin/Orders'));
+const Fundraisers = lazyPage(() => import('../pages/admin/Fundraisers'));
+const FundraiserDetail = lazyPage(() => import('../pages/admin/FundraiserDetail'));
+const Finance = lazyPage(() => import('../pages/admin/finance'));
+const Expenses = lazyPage(() => import('../pages/admin/Expenses'));
+const Leadership = lazyPage(() => import('../pages/admin/Leadership'));
+const Settings = lazyPage(() => import('../pages/admin/Settings'));
+
+const SystemStatesShowcase = lazyPage(() => import('../pages/public/SystemStatesShowcase'));
 
 // `shellWhenSignedIn` pages open inside the dashboard (sidebar) for logged-in users and keep the public navbar for visitors. `roles` limits who may open an app page.
 export const publicRoutes = [
@@ -70,3 +78,10 @@ export const appRoutes = [
   { path: '/admin/leadership', Component: Leadership, roles: [ADMIN, TREASURER] },
   { path: '/admin/settings', Component: Settings, roles: [ADMIN] },
 ];
+
+// Fetches the code for a route ahead of time (hover, focus or idle), so opening it does not wait on the network.
+export function preloadRoute(path) {
+  const route = [...publicRoutes, ...appRoutes].find((item) => item.path === path);
+  const loader = route && loaders.get(route.Component);
+  if (loader) loader().catch(() => {});
+}

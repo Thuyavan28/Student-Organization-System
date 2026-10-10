@@ -16,6 +16,7 @@ const listSelect = {
   tier: { select: { id: true, name: true } },
 };
 const STATS_TTL_SECONDS = 30;
+const LIST_TTL_SECONDS = 15;
 
 // Anything that changes membership figures also changes the dashboard and the ledger totals.
 function invalidateMembers() {
@@ -46,11 +47,15 @@ export const membersService = {
         { studentId: { contains: query.q, mode: 'insensitive' } },
       ];
     }
-    const [rows, total] = await Promise.all([
-      prisma.member.findMany({ where, select: listSelect, orderBy: sortOrder(query.sort, query.order), skip: page.skip, take: page.take }),
-      prisma.member.count({ where }),
-    ]);
-    return paginated(rows.map(present), total, page);
+    // Short cache: repeat visits and paging back and forth skip the slow database round trips.
+    // Every member write calls invalidateMembers(), which drops these entries.
+    return cache.wrap(`members:list:${JSON.stringify([query.status, query.tierId, query.q, query.sort, query.order, page.skip, page.take])}`, LIST_TTL_SECONDS, async () => {
+      const [rows, total] = await Promise.all([
+        prisma.member.findMany({ where, select: listSelect, orderBy: sortOrder(query.sort, query.order), skip: page.skip, take: page.take }),
+        prisma.member.count({ where }),
+      ]);
+      return paginated(rows.map(present), total, page);
+    });
   },
 
   async expiring(query) {

@@ -1,6 +1,7 @@
 import { env } from '../../config/env.js';
 import { prisma } from '../../config/prisma.js';
 import { conflict, forbidden, notFound } from '../../utils/apiError.js';
+import * as cache from '../../utils/memoryCache.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
 import { membershipsService } from '../memberships/memberships.service.js';
 import { notificationsService } from '../notifications/notifications.service.js';
@@ -109,8 +110,16 @@ async function cancelBooking(bookingId, actor) {
   });
 }
 
+// A booking changes seats left and the ledger, so the cached event lists and totals must be dropped.
+function invalidateBookingCaches() {
+  cache.delByPrefix('events:');
+  cache.delByPrefix('dashboard:');
+  cache.delByPrefix('finance:');
+}
+
 async function createBookingAndNotify(eventId, userId) {
   const result = await createBooking(eventId, userId);
+  invalidateBookingCaches();
   // Sent after the booking is saved and not awaited, so mail never delays the seat race or fails the booking.
   if (env.NODE_ENV !== 'test') notificationsService.ticketBooked(result);
   return result;
@@ -118,7 +127,11 @@ async function createBookingAndNotify(eventId, userId) {
 
 export const bookingsService = {
   create: createBookingAndNotify,
-  cancel: cancelBooking,
+  async cancel(bookingId, actor) {
+    const result = await cancelBooking(bookingId, actor);
+    invalidateBookingCaches();
+    return result;
+  },
 
   async listMine(userId, query) {
     const page = parsePagination(query, 10);

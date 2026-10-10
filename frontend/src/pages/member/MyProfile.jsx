@@ -14,6 +14,18 @@ import {
   LuRefreshCw,
   LuCreditCard,
   LuCheck,
+  LuArrowRight,
+  LuBell,
+  LuClipboard,
+  LuDollarSign,
+  LuFileText,
+  LuHeart,
+  LuLayoutDashboard,
+  LuPackage,
+  LuSettings,
+  LuSquareCheck,
+  LuUserCog,
+  LuUsers,
 } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { membershipsApi } from '../../api/memberships.api';
@@ -155,6 +167,69 @@ function JoinForm({ tiers, onJoined }) {
   );
 }
 
+// What each staff role does and where to do it. Staff do not buy memberships, so this replaces the join/renew area for them.
+const STAFF_WORKSPACE = {
+  ADMIN: {
+    summary: 'You have full access to run the club: people, events, money and settings.',
+    links: [
+      { to: '/admin', icon: LuLayoutDashboard, title: 'Dashboard', text: 'Club health at a glance' },
+      { to: '/admin/staff', icon: LuUserCog, title: 'Staff accounts', text: 'Create treasurer and volunteer logins' },
+      { to: '/admin/members', icon: LuUsers, title: 'Members', text: 'Memberships, dues and tiers' },
+      { to: '/admin/events', icon: LuCalendar, title: 'Events', text: 'Plan events and watch ticket sales' },
+      { to: '/admin/announcements', icon: LuBell, title: 'Announcements', text: 'Message every member' },
+      { to: '/admin/merchandise', icon: LuPackage, title: 'Merchandise', text: 'Products, sizes and stock' },
+      { to: '/admin/finance', icon: LuDollarSign, title: 'Finance', text: 'Ledger, reports and exports' },
+      { to: '/admin/settings', icon: LuSettings, title: 'Settings', text: 'Tiers and system jobs' },
+    ],
+  },
+  TREASURER: {
+    summary: 'You look after the club money: income, expenses, orders and reports.',
+    links: [
+      { to: '/admin', icon: LuLayoutDashboard, title: 'Dashboard', text: 'Income and expense overview' },
+      { to: '/admin/finance', icon: LuDollarSign, title: 'Finance', text: 'Ledger, analytics and exports' },
+      { to: '/admin/expenses', icon: LuFileText, title: 'Expenses', text: 'Review reimbursement claims' },
+      { to: '/admin/orders', icon: LuShoppingBag, title: 'Orders', text: 'Merchandise orders and refunds' },
+      { to: '/admin/members', icon: LuUsers, title: 'Members', text: 'Dues and membership status' },
+      { to: '/admin/fundraisers', icon: LuHeart, title: 'Fundraisers', text: 'Campaign progress' },
+    ],
+  },
+  VOLUNTEER: {
+    summary: 'You help on the day: check guests in, work on fundraiser tasks and claim expenses.',
+    links: [
+      { to: '/admin/check-in', icon: LuSquareCheck, title: 'Check-in', text: 'Scan tickets at the door' },
+      { to: '/admin/fundraisers', icon: LuHeart, title: 'Fundraisers', text: 'Your assigned tasks' },
+      { to: '/me/expenses', icon: LuClipboard, title: 'My expense claims', text: 'Claim money you spent for the club' },
+    ],
+  },
+};
+
+function StaffWorkspace({ role }) {
+  const config = STAFF_WORKSPACE[role];
+  if (!config) return null;
+  return (
+    <Card title={`${humanize(role)} workspace`} subtitle={config.summary}>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {config.links.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className="group flex flex-col gap-3 rounded-2xl border border-cf-border p-4 transition-colors hover:bg-cf-fg hover:text-white"
+          >
+            <item.icon className="h-5 w-5" aria-hidden="true" />
+            <div>
+              <p className="flex items-center justify-between text-sm font-semibold">
+                {item.title}
+                <LuArrowRight className="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+              </p>
+              <p className="mt-0.5 text-xs text-cf-muted group-hover:text-white/70">{item.text}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 function RenewModal({ open, tiers, currentTierId, onClose, onRenewed }) {
   const toast = useToast();
   const [tierId, setTierId] = useState(currentTierId ?? tiers[0]?.id);
@@ -203,9 +278,11 @@ function RenewModal({ open, tiers, currentTierId, onClose, onRenewed }) {
 
 export default function MyProfile() {
   const { user, refreshMe } = useAuth();
-  const tiers = useFetch(() => membershipsApi.tiers(), []);
+  // Only members buy or renew a membership; staff roles get their own workspace instead.
+  const isMember = user?.role === 'MEMBER';
+  const tiers = useFetch(() => membershipsApi.tiers(), [], { enabled: isMember });
   const [renewOpen, setRenewOpen] = useState(false);
-  const member = user?.member;
+  const member = isMember ? user?.member : null;
   const positions = (user?.leadership ?? []).filter((item) => item.isActive !== false);
 
   const initials = user?.name
@@ -270,11 +347,13 @@ export default function MyProfile() {
         </div>
       </div>
 
-      {tiers.loading && <Skeleton className="h-56 w-full rounded-2xl" />}
-      {tiers.error && <ErrorState message={tiers.error} onRetry={tiers.reload} />}
+      {!isMember && <StaffWorkspace role={user?.role} />}
+
+      {isMember && tiers.loading && <Skeleton className="h-56 w-full rounded-2xl" />}
+      {isMember && tiers.error && <ErrorState message={tiers.error} onRetry={tiers.reload} />}
 
       {/* Non-member Join Callout */}
-      {tiers.data && !member && <JoinForm tiers={tiers.data} onJoined={refreshMe} />}
+      {isMember && tiers.data && !member && <JoinForm tiers={tiers.data} onJoined={refreshMe} />}
 
       {/* Member Details Layout */}
       {tiers.data && member && (

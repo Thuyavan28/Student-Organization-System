@@ -128,7 +128,6 @@ export const eventsService = {
     const page = parsePagination(query, 12);
     const now = new Date();
     const where = {};
-    const isPublicRequest = !isManager(user) && !query.q && !query.status && !query.upcoming;
     if (isManager(user)) {
       if (query.status) where.status = query.status;
     } else {
@@ -141,34 +140,39 @@ export const eventsService = {
     }
     if (query.q) where.OR = [{ title: { contains: query.q, mode: 'insensitive' } }, { venue: { contains: query.q, mode: 'insensitive' } }];
 
-    const cacheKey = `events:list:${JSON.stringify({ where, skip: page.skip, take: page.take })}`;
-    const load = async () => {
+    // The key is built from the request, not from `where`, because `where` holds the current time and would never repeat.
+    // The list contains nothing user specific, so managers and visitors can share cached pages. Bookings and
+    // event changes drop the cache (invalidateEvents), and the short TTL covers anything else, such as an event starting.
+    const cacheKey = `events:list:${JSON.stringify({ manager: isManager(user), q: query.q, status: query.status, upcoming: Boolean(query.upcoming), skip: page.skip, take: page.take })}`;
+    return cache.wrap(cacheKey, EVENTS_LIST_TTL_SECONDS, async () => {
+      // Counts depend on the rows, but the total does not, so it runs alongside the rows instead of after them.
       const [rows, total] = await Promise.all([
         prisma.event.findMany({ where, orderBy: { startAt: query.upcoming ? 'asc' : 'desc' }, skip: page.skip, take: page.take }),
         prisma.event.count({ where }),
       ]);
       const counts = await bookedCounts(rows.map((event) => event.id));
       return paginated(rows.map((event) => withSeats(event, counts)), total, page);
-    };
-    // Cache public unfiltered lists only — authenticated requests with filters skip the cache.
-    return isPublicRequest ? cache.wrap(cacheKey, EVENTS_LIST_TTL_SECONDS, load) : load();
+    });
   },
 
   async get(id, user) {
-    const event = await requireEvent(id);
+    // All four lookups are independent, so they share one database round trip instead of three in a row.
+    const [event, counts, member, booking] = await Promise.all([
+      requireEvent(id),
+      bookedCounts([id]),
+      user ? prisma.member.findUnique({ where: { userId: user.id } }) : null,
+      user
+        ? prisma.booking.findFirst({
+            where: { eventId: id, userId: user.id },
+            orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+            select: { id: true, status: true, priceAtBooking: true, ticket: { select: { token: true, status: true } } },
+          })
+        : null,
+    ]);
     if (!isManager(user) && !PUBLIC_STATUSES.includes(event.status)) throw notFound('Event not found');
-    const counts = await bookedCounts([id]);
     const result = withSeats(event, counts);
     if (!user) return result;
 
-    const [member, booking] = await Promise.all([
-      prisma.member.findUnique({ where: { userId: user.id } }),
-      prisma.booking.findFirst({
-        where: { eventId: id, userId: user.id },
-        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-        select: { id: true, status: true, priceAtBooking: true, ticket: { select: { token: true, status: true } } },
-      }),
-    ]);
     const { price, isMemberPrice } = priceFor(event, membershipsService.isActiveMember(member));
     return { ...result, yourPrice: price, isMemberPrice, yourBooking: booking };
   },
@@ -202,6 +206,7 @@ export const eventsService = {
       await requireEvent(id);
       throw conflict('INVALID_TRANSITION', 'Only a draft event can be published');
     }
+    invalidateEvents();
     return prisma.event.findUnique({ where: { id } });
   },
 
@@ -213,6 +218,7 @@ export const eventsService = {
       const { count } = await prisma.event.updateMany({ where: { id, status: 'PUBLISHED' }, data: { status: 'COMPLETED' } });
       if (count === 0) throw conflict('INVALID_TRANSITION', 'Only a published event can be marked completed');
     }
+    invalidateEvents();
     return prisma.event.findUnique({ where: { id } });
   },
 
