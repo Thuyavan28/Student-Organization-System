@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { LuCheck, LuFileText, LuPaperclip, LuSearch, LuX } from 'react-icons/lu';
 import { apiErrorMessage } from '../../api/axiosInstance';
 import { expensesApi } from '../../api/expenses.api';
@@ -22,6 +23,7 @@ import { formatDate } from '../../utils/formatDate';
 
 export default function Expenses() {
   const toast = useToast();
+  const qc = useQueryClient();
   const [status, setStatus] = useState('SUBMITTED');
   const [category, setCategory] = useState('');
   const [search, setSearch] = useState('');
@@ -42,9 +44,12 @@ export default function Expenses() {
     setWorking(true);
     try {
       await expensesApi.review(review.expense.id, { decision: review.decision, note: note.trim() || undefined });
-      toast.success(`Claim ${review.decision === 'APPROVED' ? 'approved' : 'rejected'}`);
+      toast.success(review.decision === 'APPROVED' ? 'Claim approved — balance deducted' : 'Claim rejected');
       setReview(null);
       setNote('');
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['finance'] });
+      qc.invalidateQueries({ queryKey: ['useFetch'] });
       reload();
     } catch (err) {
       toast.error(apiErrorMessage(err));
@@ -59,6 +64,9 @@ export default function Expenses() {
       await expensesApi.reimburse(reimburse.id);
       toast.success('Reimbursed and recorded in the ledger');
       setReimburse(null);
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['finance'] });
+      qc.invalidateQueries({ queryKey: ['useFetch'] });
       reload();
     } catch (err) {
       toast.error(apiErrorMessage(err));
@@ -75,14 +83,14 @@ export default function Expenses() {
       header: 'Claimant',
       render: (row) => (
         <div>
-          <p className="font-medium text-slate-900">{row.submittedBy?.name}</p>
-          <p className="text-xs text-slate-500">{row.event?.title ?? row.fundraiser?.title ?? 'General'}</p>
+          <p className="font-medium text-cf-fg">{row.submittedBy?.name}</p>
+          <p className="text-xs text-cf-muted">{row.event?.title ?? row.fundraiser?.title ?? 'General'}</p>
         </div>
       ),
     },
     { key: 'description', header: 'Description', render: (row) => <span className="block max-w-xs">{row.description}</span> },
     { key: 'category', header: 'Category', render: (row) => <Badge tone="gray">{humanize(row.category)}</Badge> },
-    { key: 'amount', header: 'Amount', className: 'tabular-nums font-medium text-slate-900', render: (row) => formatCurrency(row.amount) },
+    { key: 'amount', header: 'Amount', className: 'tabular-nums font-medium text-cf-fg', render: (row) => formatCurrency(row.amount) },
     {
       key: 'receipt',
       header: 'Receipt',
@@ -90,7 +98,7 @@ export default function Expenses() {
         row.receiptUrl ? (
           <Button size="sm" variant="ghost" icon={LuPaperclip} onClick={() => setReceipt(row.receiptUrl)}>View</Button>
         ) : (
-          <span className="text-slate-400">None</span>
+          <span className="text-cf-muted">None</span>
         ),
     },
     {
@@ -99,7 +107,7 @@ export default function Expenses() {
       render: (row) => (
         <div>
           <Badge status={row.status} />
-          {row.reviewNote && <p className="mt-1 max-w-[12rem] text-xs text-slate-500">{row.reviewNote}</p>}
+          {row.reviewNote && <p className="mt-1 max-w-[12rem] text-xs text-cf-muted">{row.reviewNote}</p>}
         </div>
       ),
     },
@@ -126,8 +134,8 @@ export default function Expenses() {
     <>
       <PageHeader title="Expense claims" subtitle="Review claims, then reimburse approved ones. Each reimbursement is recorded in the ledger exactly once." />
       <Card padded={false}>
-        <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
-          <div className="inline-flex flex-wrap rounded-lg bg-slate-100 p-1" role="tablist">
+        <div className="flex flex-wrap items-end gap-3 border-b border-cf-divider p-4">
+          <div className="inline-flex flex-wrap rounded-lg bg-cf-subtle p-1" role="tablist">
             {[['', 'All'], ...EXPENSE_STATUSES.map((value) => [value, humanize(value)])].map(([value, label]) => (
               <button
                 key={value || 'all'}
@@ -135,7 +143,7 @@ export default function Expenses() {
                 role="tab"
                 aria-selected={status === value}
                 onClick={() => { setStatus(value); setPage(1); }}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium ${status === value ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-600'}`}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium ${status === value ? 'bg-white text-primary-700 ' : 'text-cf-muted'}`}
               >
                 {label}
               </button>
@@ -143,7 +151,7 @@ export default function Expenses() {
           </div>
           <Select aria-label="filter by category" value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }} placeholder="All categories" options={EXPENSE_CATEGORIES.map((value) => ({ value, label: humanize(value) }))} />
           <div className="relative min-w-[12rem] flex-1">
-            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cf-muted" aria-hidden="true" />
             <Input aria-label="Search claims" className="[&_input]:pl-9" placeholder="Search description or claimant" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           </div>
         </div>
@@ -171,7 +179,7 @@ export default function Expenses() {
           </>
         }
       >
-        <p className="mb-3 text-sm text-slate-600">
+        <p className="mb-3 text-sm text-cf-muted">
           {review?.expense.description} for {formatCurrency(review?.expense.amount ?? 0)} from {review?.expense.submittedBy?.name}.
         </p>
         <Input label="Note to the claimant (optional)" as="textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />

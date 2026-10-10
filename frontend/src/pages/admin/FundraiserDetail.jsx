@@ -132,7 +132,7 @@ function IncomeForm({ fundraiserId, onClose, onSaved }) {
       <form id="income-form" onSubmit={submit} noValidate className="space-y-4">
         <Input label="Amount (Rs)" type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} error={errors.amount} />
         <Input label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} error={errors.description} placeholder="Bake sale cash, day 2" />
-        <p className="text-xs text-slate-500">This adds a row to the Finance ledger, so the raised total and the Finance page always agree.</p>
+        <p className="text-xs text-cf-muted">This adds a row to the Finance ledger, so the raised total and the Finance page always agree.</p>
       </form>
     </Modal>
   );
@@ -170,7 +170,7 @@ export default function FundraiserDetail() {
 
   return (
     <>
-      <Link to="/admin/fundraisers" className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
+      <Link to="/admin/fundraisers" className="mb-3 inline-flex items-center gap-1 text-sm text-cf-muted hover:text-cf-fg">
         <LuArrowLeft aria-hidden="true" /> All fundraisers
       </Link>
       <PageHeader
@@ -185,14 +185,14 @@ export default function FundraiserDetail() {
           </>
         }
       />
-      {f?.description && <p className="mb-5 max-w-3xl text-sm text-slate-600">{f.description}</p>}
+      {f?.description && <p className="mb-5 max-w-3xl text-sm text-cf-muted">{f.description}</p>}
 
       <Card title="Progress">
         {summary.loading && !summary.data ? <Skeleton className="h-28 w-full" /> : summary.error ? <ErrorState message={summary.error} onRetry={summary.reload} /> : <FundraiserProgress summary={summary.data} />}
       </Card>
 
       <div className="mt-6">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Task board</h2>
+        <h2 className="mb-3 text-lg font-semibold text-cf-fg">Task board</h2>
         {tasks.error ? (
           <ErrorState message={tasks.error} onRetry={tasks.reload} />
         ) : tasks.loading && !tasks.data ? (

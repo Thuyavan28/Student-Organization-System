@@ -64,6 +64,14 @@ function fillMonths(rows) {
   return result;
 }
 
+// Builds a safe Prisma.sql fragment for an optional date range on occurred_at.
+function rangeSql(from, to) {
+  if (from && to) return Prisma.sql`occurred_at >= ${from} AND occurred_at <= ${to}`;
+  if (from) return Prisma.sql`occurred_at >= ${from}`;
+  if (to) return Prisma.sql`occurred_at <= ${to}`;
+  return Prisma.sql`TRUE`;
+}
+
 // Prisma cannot group by a truncated date, so the monthly buckets are computed by one grouped SQL query.
 // The database returns at most one row per month instead of every ledger row being loaded.
 async function monthlyTotals(from, to) {
@@ -77,6 +85,7 @@ async function monthlyTotals(from, to) {
     ORDER BY 1`;
   return fillMonths(rows.map((row) => ({ month: row.month, income: Number(row.income), expense: Number(row.expense) })));
 }
+
 
 // Prisma groupBy cannot join a related table directly, so titles are fetched in a second parallel
 // query and merged in memory. Two indexed ORM queries are faster than one dynamic raw SQL JOIN

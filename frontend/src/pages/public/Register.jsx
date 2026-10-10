@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { LuUserPlus, LuZap } from 'react-icons/lu';
-import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { LuCircleAlert, LuInfo, LuMail, LuUser, LuUserPlus } from 'react-icons/lu';
+import { apiErrorBody, apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import Button from '../../components/ui/Button';
+import GoogleAuthButton, { OrDivider } from '../../components/feature/GoogleAuthButton';
+import AuthLayout from '../../components/layout/AuthLayout';
 import Input from '../../components/ui/Input';
+import PasswordInput from '../../components/ui/PasswordInput';
 import { useAuth } from '../../hooks/useAuth';
 import { homeFor } from '../../utils/constants';
 
@@ -17,9 +20,11 @@ function validate(form) {
 }
 
 export default function Register() {
-  const { user, register } = useAuth();
+  const { user, register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
+  // Sent by the login page when a Google email has no account yet.
+  const redirected = useLocation().state;
+  const [form, setForm] = useState({ name: '', email: redirected?.email ?? '', password: '', confirm: '' });
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -40,6 +45,12 @@ export default function Register() {
       const created = await register({ name: form.name.trim(), email: form.email.trim(), password: form.password });
       navigate(homeFor(created.role), { replace: true });
     } catch (error) {
+      const body = apiErrorBody(error);
+      // Already registered with this email: take them to log in with it instead of showing a dead end.
+      if (body?.code === 'EMAIL_TAKEN') {
+        navigate('/login', { replace: true, state: { email: form.email.trim(), notice: body.message } });
+        return;
+      }
       setErrors(apiFieldErrors(error));
       setFormError(apiErrorMessage(error, 'Could not create your account'));
     } finally {
@@ -48,27 +59,49 @@ export default function Register() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
-        <Link to="/" className="mb-6 flex items-center justify-center gap-2 text-2xl font-bold text-primary-700">
-          <LuZap aria-hidden="true" /> ClubFlow
-        </Link>
-        <form onSubmit={submit} noValidate className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h1 className="text-xl font-semibold text-slate-900">Create your account</h1>
-          <p className="text-sm text-slate-600">After signing up you can buy tickets and order merchandise, or join the club for member prices.</p>
-          {formError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{formError}</p>
-          )}
-          <Input label="Full name" autoComplete="name" value={form.name} onChange={set('name')} error={errors.name} />
-          <Input label="Email" type="email" autoComplete="email" value={form.email} onChange={set('email')} error={errors.email} />
-          <Input label="Password" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} error={errors.password} hint="At least 8 characters" />
-          <Input label="Confirm password" type="password" autoComplete="new-password" value={form.confirm} onChange={set('confirm')} error={errors.confirm} />
-          <Button type="submit" className="w-full" icon={LuUserPlus} loading={saving}>Sign up</Button>
-          <p className="text-center text-sm text-slate-600">
-            Already registered? <Link className="font-medium text-primary-700 hover:underline" to="/login">Log in</Link>
+    <AuthLayout
+      title="Create your account"
+      subtitle="Buy tickets and order merchandise, or join the club for member prices."
+    >
+      <form onSubmit={submit} noValidate className="space-y-4">
+        {redirected?.notice && !formError && (
+          <p className="flex items-start gap-2 rounded-xl border border-cf-border bg-cf-subtle px-3 py-2.5 text-sm text-cf-fg" role="status">
+            <LuInfo className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> {redirected.notice}
           </p>
-        </form>
-      </div>
-    </main>
+        )}
+        {formError && (
+          <p className="flex items-start gap-2 rounded-xl border border-cf-accent/30 bg-red-50 px-3 py-2.5 text-sm text-red-700" role="alert">
+            <LuCircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> {formError}
+          </p>
+        )}
+        <Input id="name" label="Full name" icon={LuUser} placeholder="Your full name" autoComplete="name" value={form.name} onChange={set('name')} error={errors.name} />
+        <Input id="email" label="Email" type="email" icon={LuMail} placeholder="you@example.com" autoComplete="email" value={form.email} onChange={set('email')} error={errors.email} />
+        <PasswordInput id="password" label="Password" placeholder="At least 8 characters" autoComplete="new-password" value={form.password} onChange={set('password')} error={errors.password} helpText="Use at least 8 characters" />
+        <PasswordInput id="confirm" label="Confirm password" placeholder="Repeat your password" autoComplete="new-password" value={form.confirm} onChange={set('confirm')} error={errors.confirm} />
+        <Button type="submit" size="lg" className="w-full" icon={LuUserPlus} loading={saving}>Sign up</Button>
+        <OrDivider />
+        <GoogleAuthButton
+          text="signup_with"
+          onCredential={async (accessToken) => {
+            try {
+              const signedIn = await loginWithGoogle(accessToken, 'signup');
+              navigate(homeFor(signedIn.role), { replace: true });
+            } catch (error) {
+              const body = apiErrorBody(error);
+              // This Google email already has an account: do not sign in as if it were new, go to log in.
+              if (body?.code === 'ACCOUNT_EXISTS') {
+                navigate('/login', { replace: true, state: { email: body.details?.email, notice: body.message } });
+                return;
+              }
+              throw error;
+            }
+          }}
+          onError={setFormError}
+        />
+        <p className="text-center text-sm text-cf-muted">
+          Already registered? <Link className="font-semibold text-cf-fg underline-offset-4 hover:underline" to="/login">Log in</Link>
+        </p>
+      </form>
+    </AuthLayout>
   );
 }

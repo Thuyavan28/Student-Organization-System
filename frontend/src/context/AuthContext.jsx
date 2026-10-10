@@ -62,6 +62,11 @@ export function AuthProvider({ children }) {
     return completeAuth(body);
   }, [completeAuth]);
 
+  const loginWithGoogle = useCallback(async (accessToken, mode = 'login') => {
+    const body = await authApi.google(accessToken, mode);
+    return completeAuth(body);
+  }, [completeAuth]);
+
   const register = useCallback(async (details) => {
     const body = await authApi.register(details);
     return completeAuth(body);
@@ -79,12 +84,13 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(user),
       isActiveMember: Boolean(user?.member?.isActive),
       login,
+      loginWithGoogle,
       register,
       logout,
       refreshMe,
       hasRole: (...roles) => Boolean(user) && roles.includes(user.role),
     }),
-    [user, login, register, logout, refreshMe],
+    [user, login, loginWithGoogle, register, logout, refreshMe],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

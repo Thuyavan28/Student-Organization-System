@@ -1,42 +1,85 @@
-import { LuZap } from 'react-icons/lu';
+import { useState } from 'react';
+import { LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { navItemsFor } from '../../utils/constants';
+import UserPanel from './UserPanel';
 
+const STORAGE_KEY = 'clubflow.sidebar.collapsed';
+
+function readCollapsed() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+// Fixed (sticky, full-height) sidebar. Only the nav list scrolls; the menu
+// header and account block stay in place. Can be collapsed to icons only.
 export default function Sidebar() {
   const { user } = useAuth();
   const items = navItemsFor(user?.role);
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+
+  const toggle = () => {
+    setCollapsed((value) => {
+      try {
+        localStorage.setItem(STORAGE_KEY, value ? '0' : '1');
+      } catch {
+        /* storage unavailable: keep in-memory state */
+      }
+      return !value;
+    });
+  };
 
   return (
-    <aside className="no-print hidden w-56 shrink-0 flex-col border-r border-cf-divider bg-white lg:flex">
-      {/* Brand */}
-      <div className="flex h-14 items-center gap-2 border-b border-cf-divider px-5">
-        <LuZap className="h-5 w-5 text-cf-fg" aria-hidden="true" />
-        <span className="text-sm font-bold tracking-tight text-cf-fg">ClubFlow</span>
+    <aside
+      className={`no-print sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 flex-col border-r border-cf-border bg-white transition-[width] duration-200 lg:flex ${
+        collapsed ? 'w-[76px]' : 'w-64'
+      }`}
+    >
+      {/* Menu header */}
+      <div className={`flex h-14 items-center border-b border-cf-divider ${collapsed ? 'justify-center' : 'justify-between px-5'}`}>
+        {!collapsed && <span className="text-lg font-bold tracking-tight text-cf-fg">Menu</span>}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+          className="rounded-xl p-2 text-cf-fg transition-colors hover:bg-cf-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cf-fg"
+        >
+          {collapsed ? <LuChevronRight className="h-5 w-5" /> : <LuChevronLeft className="h-5 w-5" />}
+        </button>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2" aria-label="Sidebar navigation">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3" aria-label="Sidebar navigation">
         {items.map((item) => (
           <NavLink
             key={item.to + item.label}
             to={item.to}
             end={item.end}
+            title={collapsed ? item.label : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors mb-0.5 ${
+              `flex items-center rounded-xl border text-sm font-medium transition-colors ${
+                collapsed ? 'justify-center px-0 py-2' : 'gap-3 px-3.5 py-2'
+              } ${
                 isActive
-                  ? 'bg-cf-fg text-white'
-                  : 'text-cf-muted hover:bg-cf-hover hover:text-cf-fg'
+                  ? 'border-cf-border bg-white text-cf-fg'
+                  : 'border-transparent text-cf-fg hover:bg-cf-hover'
               }`
             }
           >
-            <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-            {item.label}
+            <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+            {!collapsed && <span className="truncate">{item.label}</span>}
           </NavLink>
         ))}
       </nav>
 
-      <p className="border-t border-cf-divider p-4 text-xs text-cf-muted">Skyline Student Association</p>
+      <div className="border-t border-cf-divider p-3">
+        <UserPanel collapsed={collapsed} />
+      </div>
     </aside>
   );
 }

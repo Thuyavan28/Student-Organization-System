@@ -5,6 +5,7 @@ import { transactionsApi } from '../../api/transactions.api';
 import { financeApi } from '../../api/finance.api';
 import { useTransactionsList, useCreateTransaction } from '../../hooks/queries/transactions.queries';
 import { useFinanceSummary } from '../../hooks/queries/finance.queries';
+import FinanceAnalytics from '../../components/feature/FinanceAnalytics';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import DataCard from '../../components/ui/DataCard';
@@ -115,6 +116,7 @@ export default function Finance() {
   const TABS = [
     { id: 'ledger', label: 'Ledger' },
     { id: 'summary', label: 'Summary' },
+    { id: 'reports', label: 'Reports & Analytics' },
   ];
 
   return (
@@ -250,6 +252,8 @@ export default function Finance() {
           </DataCard>
         </div>
       )}
+
+      {tab === 'reports' && <FinanceAnalytics />}
 
       {addOpen && <AddTransactionModal onClose={() => setAddOpen(false)} onSaved={() => setAddOpen(false)} />}
     </div>

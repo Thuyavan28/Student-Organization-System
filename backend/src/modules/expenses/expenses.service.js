@@ -1,5 +1,6 @@
 import { prisma } from '../../config/prisma.js';
 import { badRequest, conflict, forbidden, notFound } from '../../utils/apiError.js';
+import * as cache from '../../utils/memoryCache.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
 
 
@@ -67,21 +68,42 @@ export const expensesService = {
     if (expense.submittedById === reviewer.id) {
       throw forbidden('You cannot review your own expense claim', 'CANNOT_REVIEW_OWN');
     }
-    // Only a SUBMITTED claim can be decided, once.
-    const { count } = await prisma.expense.updateMany({
-      where: { id, status: 'SUBMITTED' },
-      data: { status: decision, reviewedById: reviewer.id, reviewNote: note ?? null },
+    const now = new Date();
+    const updated = await prisma.$transaction(async (tx) => {
+      const { count } = await tx.expense.updateMany({
+        where: { id, status: 'SUBMITTED' },
+        data: { status: decision, reviewedById: reviewer.id, reviewNote: note ?? null },
+      });
+      if (count === 0) throw conflict('ALREADY_REVIEWED', 'This claim has already been reviewed');
+
+      // If approved, immediately record the expense in the ledger so the balance is deducted
+      if (decision === 'APPROVED') {
+        const existingTx = await tx.transaction.findFirst({
+          where: { sourceType: 'EXPENSE', sourceId: String(id) },
+        });
+        if (!existingTx) {
+          await tx.transaction.create({
+            data: {
+              type: 'EXPENSE', category: 'REIMBURSEMENT', amount: expense.amount,
+              description: `Approved claim: ${expense.description}`,
+              eventId: expense.eventId, fundraiserId: expense.fundraiserId,
+              sourceType: 'EXPENSE', sourceId: String(expense.id), occurredAt: now, recordedById: reviewer.id,
+            },
+          });
+        }
+      }
+      return tx.expense.findUnique({ where: { id }, include: expenseInclude });
     });
-    if (count === 0) throw conflict('ALREADY_REVIEWED', 'This claim has already been reviewed');
-    return prisma.expense.findUnique({ where: { id }, include: expenseInclude });
+    cache.delByPrefix('finance:');
+    cache.delByPrefix('dashboard:');
+    return updated;
   },
 
-  // Reimbursement is idempotent twice over: the guarded status change lets one request through,
-  // and the unique (source_type, source_id) ledger constraint would reject a duplicate row anyway.
+  // Reimbursement is idempotent: updates status and ensures ledger transaction exists
   async reimburse(id, actor) {
     await requireExpense(id);
     const now = new Date();
-    return prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx) => {
       const { count } = await tx.expense.updateMany({
         where: { id, status: 'APPROVED' },
         data: { status: 'REIMBURSED', reimbursedAt: now },
@@ -89,15 +111,23 @@ export const expensesService = {
       if (count === 0) throw conflict('NOT_REIMBURSABLE', 'Only an approved claim that has not been reimbursed can be reimbursed');
 
       const expense = await tx.expense.findUnique({ where: { id }, include: expenseInclude });
-      await tx.transaction.create({
-        data: {
-          type: 'EXPENSE', category: 'REIMBURSEMENT', amount: expense.amount,
-          description: `Reimbursement: ${expense.description}`,
-          eventId: expense.eventId, fundraiserId: expense.fundraiserId,
-          sourceType: 'EXPENSE', sourceId: String(expense.id), occurredAt: now, recordedById: actor.id,
-        },
+      const existingTx = await tx.transaction.findFirst({
+        where: { sourceType: 'EXPENSE', sourceId: String(id) },
       });
+      if (!existingTx) {
+        await tx.transaction.create({
+          data: {
+            type: 'EXPENSE', category: 'REIMBURSEMENT', amount: expense.amount,
+            description: `Reimbursement: ${expense.description}`,
+            eventId: expense.eventId, fundraiserId: expense.fundraiserId,
+            sourceType: 'EXPENSE', sourceId: String(expense.id), occurredAt: now, recordedById: actor.id,
+          },
+        });
+      }
       return expense;
     });
+    cache.delByPrefix('finance:');
+    cache.delByPrefix('dashboard:');
+    return updated;
   },
 };

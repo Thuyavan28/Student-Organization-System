@@ -11,7 +11,7 @@ export function Table({ children }) {
 
 export function Thead({ children }) {
   return (
-    <thead className="border-b border-cf-divider">
+    <thead className="border-b border-cf-fg/80">
       <tr>{children}</tr>
     </thead>
   );
@@ -21,7 +21,7 @@ export function Th({ children, className = '', right = false }) {
   return (
     <th
       scope="col"
-      className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-cf-muted ${right ? 'text-right' : 'text-left'} ${className}`}
+      className={`px-4 py-3 text-xs font-semibold text-cf-fg ${right ? 'text-right' : 'text-left'} ${className}`}
     >
       {children}
     </th>
@@ -35,7 +35,7 @@ export function Tbody({ children }) {
 export function Tr({ children, className = '', onClick }) {
   return (
     <tr
-      className={`transition-colors ${onClick ? 'cursor-pointer hover:bg-cf-hover' : 'hover:bg-cf-subtle/60'} ${className}`}
+      className={`transition-colors ${onClick ? 'cursor-pointer hover:bg-cf-hover' : 'hover:bg-cf-hover'} ${className}`}
       onClick={onClick}
     >
       {children}
@@ -68,13 +68,13 @@ export default function TableCompat({ columns = [], rows = [], loading = false, 
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="border-b border-cf-divider">
+        <thead className="border-b border-cf-fg/80">
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key ?? col.header}
                 scope="col"
-                className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide text-cf-muted ${col.right ? 'text-right' : 'text-left'}`}
+                className={`px-4 py-3 text-xs font-semibold text-cf-fg ${col.right ? 'text-right' : 'text-left'}`}
               >
                 {col.header}
               </th>
@@ -83,7 +83,7 @@ export default function TableCompat({ columns = [], rows = [], loading = false, 
         </thead>
         <tbody className="divide-y divide-cf-divider">
           {rows.map((row, i) => (
-            <tr key={row.id ?? i} className="transition-colors hover:bg-cf-subtle/60">
+            <tr key={row.id ?? i} className="transition-colors hover:bg-cf-hover">
               {columns.map((col) => (
                 <td
                   key={col.key ?? col.header}

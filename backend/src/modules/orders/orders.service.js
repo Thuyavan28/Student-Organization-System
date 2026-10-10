@@ -1,7 +1,9 @@
+import { env } from '../../config/env.js';
 import { prisma } from '../../config/prisma.js';
 import { badRequest, conflict, notFound } from '../../utils/apiError.js';
 import { applyPercentDiscount } from '../../utils/money.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
+import { notificationsService } from '../notifications/notifications.service.js';
 import { membershipsService } from '../memberships/memberships.service.js';
 import { MAX_QUANTITY } from './orders.schema.js';
 
@@ -114,8 +116,11 @@ async function cancel(id, actorId) {
 }
 
 export const ordersService = {
-  create(userId, items) {
-    return prisma.$transaction((tx) => placeOrder(tx, userId, mergeLines(items)));
+  async create(userId, items) {
+    const order = await prisma.$transaction((tx) => placeOrder(tx, userId, mergeLines(items)));
+    // Sent after the order is saved and not awaited, so a slow mail server never delays or fails the purchase.
+    if (env.NODE_ENV !== 'test') notificationsService.orderPlaced(order);
+    return order;
   },
 
   async listMine(userId, query) {

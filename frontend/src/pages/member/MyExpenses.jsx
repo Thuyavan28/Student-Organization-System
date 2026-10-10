@@ -21,7 +21,7 @@ export default function MyExpenses() {
 
   const columns = [
     { key: 'createdAt', header: 'Submitted', render: (row) => formatDate(row.createdAt) },
-    { key: 'description', header: 'Description', render: (row) => <span className="font-medium text-slate-900">{row.description}</span> },
+    { key: 'description', header: 'Description', render: (row) => <span className="font-medium text-cf-fg">{row.description}</span> },
     { key: 'category', header: 'Category', render: (row) => humanize(row.category) },
     { key: 'amount', header: 'Amount', className: 'tabular-nums', render: (row) => formatCurrency(row.amount) },
     {
@@ -30,7 +30,7 @@ export default function MyExpenses() {
       render: (row) => (
         <div>
           <Badge status={row.status} />
-          {row.reviewNote && <p className="mt-1 max-w-[14rem] text-xs text-slate-500">{row.reviewNote}</p>}
+          {row.reviewNote && <p className="mt-1 max-w-[14rem] text-xs text-cf-muted">{row.reviewNote}</p>}
         </div>
       ),
     },
@@ -41,7 +41,7 @@ export default function MyExpenses() {
         row.receiptUrl ? (
           <Button size="sm" variant="ghost" icon={LuPaperclip} onClick={() => setReceipt(row.receiptUrl)}>View</Button>
         ) : (
-          <span className="text-slate-400">None</span>
+          <span className="text-cf-muted">None</span>
         ),
     },
   ];

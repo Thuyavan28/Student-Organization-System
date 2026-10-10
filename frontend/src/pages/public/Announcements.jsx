@@ -41,7 +41,7 @@ export default function Announcements() {
                 <AnnouncementCard key={announcement.id} announcement={announcement} />
               ))}
             </div>
-            <div className="mt-4 rounded-xl border border-slate-200 bg-white">
+            <div className="mt-4 rounded-xl border border-cf-divider bg-white">
               <Pagination meta={meta} onPage={setPage} />
             </div>
           </>

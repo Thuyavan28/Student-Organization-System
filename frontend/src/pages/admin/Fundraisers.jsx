@@ -100,7 +100,7 @@ function FundraiserCard({ fundraiser }) {
       subtitle={`${formatDate(fundraiser.startDate)} to ${formatDate(fundraiser.endDate)}`}
       actions={<Badge status={fundraiser.status} />}
     >
-      <p className="mb-4 line-clamp-2 text-sm text-slate-600">{fundraiser.description}</p>
+      <p className="mb-4 line-clamp-2 text-sm text-cf-muted">{fundraiser.description}</p>
       {summary.loading && <Skeleton className="h-24 w-full" />}
       {summary.error && <p className="text-sm text-red-600">{summary.error}</p>}
       {summary.data && <FundraiserProgress summary={summary.data} compact />}

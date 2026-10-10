@@ -1,7 +1,9 @@
+import { env } from '../../config/env.js';
 import { prisma } from '../../config/prisma.js';
 import { conflict, forbidden, notFound } from '../../utils/apiError.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
 import { membershipsService } from '../memberships/memberships.service.js';
+import { notificationsService } from '../notifications/notifications.service.js';
 import { ticketsService } from '../tickets/tickets.service.js';
 
 
@@ -107,8 +109,15 @@ async function cancelBooking(bookingId, actor) {
   });
 }
 
+async function createBookingAndNotify(eventId, userId) {
+  const result = await createBooking(eventId, userId);
+  // Sent after the booking is saved and not awaited, so mail never delays the seat race or fails the booking.
+  if (env.NODE_ENV !== 'test') notificationsService.ticketBooked(result);
+  return result;
+}
+
 export const bookingsService = {
-  create: createBooking,
+  create: createBookingAndNotify,
   cancel: cancelBooking,
 
   async listMine(userId, query) {

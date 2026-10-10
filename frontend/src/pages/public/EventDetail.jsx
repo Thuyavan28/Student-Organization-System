@@ -4,7 +4,8 @@ import { LuArrowLeft, LuCalendar, LuCircleCheck, LuClock, LuMapPin, LuUsers } fr
 import { apiErrorMessage } from '../../api/axiosInstance';
 import { bookingsApi } from '../../api/bookings.api';
 import { eventsApi } from '../../api/events.api';
-import PaymentDisclaimer from '../../components/feature/PaymentDisclaimer';
+import PaymentQrModal from '../../components/feature/PaymentQrModal';
+import TicketConfirmationModal from '../../components/feature/TicketConfirmationModal';
 import PublicNavbar from '../../components/layout/PublicNavbar';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -36,6 +37,7 @@ export default function EventDetail() {
   const toast = useToast();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [booking, setBooking] = useState(false);
+  const [bookingResult, setBookingResult] = useState(null);
 
   const { data: event, loading, error, reload } = useFetch(() => eventsApi.get(id), [id, user?.id]);
 
@@ -63,12 +65,17 @@ export default function EventDetail() {
     setConfirmOpen(true);
   };
 
-  const confirmBooking = async () => {
+  const confirmBooking = async (paymentMeta) => {
     setBooking(true);
     try {
-      await bookingsApi.create(event.id);
-      toast.success('Ticket booked. Your QR ticket is ready.');
-      navigate('/me/tickets');
+      const res = await bookingsApi.create(event.id);
+      toast.success('Payment verified! Your ticket QR is generated.');
+      setConfirmOpen(false);
+      setBookingResult({
+        ...res.data,
+        verificationCode: paymentMeta?.verificationCode,
+      });
+      reload();
     } catch (err) {
       toast.error(apiErrorMessage(err));
       setConfirmOpen(false);
@@ -82,7 +89,7 @@ export default function EventDetail() {
     <>
       <PublicNavbar />
       <main className="mx-auto max-w-5xl px-4 py-8">
-        <Link to="/events" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
+        <Link to="/events" className="mb-4 inline-flex items-center gap-1 text-sm text-cf-muted hover:text-cf-fg">
           <LuArrowLeft aria-hidden="true" /> All events
         </Link>
         <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
@@ -93,82 +100,79 @@ export default function EventDetail() {
                 <Badge tone={event.seatsRemaining <= 10 ? 'amber' : 'green'}>{event.seatsRemaining} seats left</Badge>
               )}
             </div>
-            <h1 className="text-3xl font-bold text-slate-900">{event.title}</h1>
-            <ul className="space-y-2 text-slate-600">
+            <h1 className="text-3xl font-bold text-cf-fg">{event.title}</h1>
+            <ul className="space-y-2 text-cf-muted">
               <li className="flex items-center gap-2"><LuCalendar aria-hidden="true" /> {formatDateTime(event.startAt)}</li>
               <li className="flex items-center gap-2"><LuClock aria-hidden="true" /> Ends {formatDateTime(event.endAt)}</li>
               <li className="flex items-center gap-2"><LuMapPin aria-hidden="true" /> {event.venue}</li>
               <li className="flex items-center gap-2"><LuUsers aria-hidden="true" /> {booked} of {event.capacity} seats booked</li>
             </ul>
-            <p className="whitespace-pre-line leading-relaxed text-slate-700">{event.description}</p>
+            <p className="whitespace-pre-line leading-relaxed text-cf-muted">{event.description}</p>
           </div>
 
-          <Card title="Tickets">
-            <dl className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-slate-600">Member price</dt>
-                <dd className={`font-semibold ${isMemberPrice ? 'text-primary-700' : 'text-slate-800'}`}>{formatCurrency(event.memberPrice)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-600">Non-member price</dt>
-                <dd className="font-semibold text-slate-800">{formatCurrency(event.nonMemberPrice)}</dd>
-              </div>
-              <div className="flex justify-between border-t border-slate-100 pt-3">
-                <dt className="font-medium text-slate-900">{user ? 'Your price' : 'Price'}</dt>
-                <dd className="text-lg font-bold text-slate-900">{formatCurrency(price)}</dd>
-              </div>
-            </dl>
+          <Card title="Tickets" className="self-start lg:sticky lg:top-20">
+            <div className="space-y-5">
+              <dl className="space-y-3 text-sm">
+                <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${isMemberPrice ? 'bg-emerald-50 ring-1 ring-emerald-200' : ''}`}>
+                  <dt className="text-cf-muted">Member price</dt>
+                  <dd className={`font-semibold ${isMemberPrice ? 'text-emerald-700' : 'text-cf-fg'}`}>{formatCurrency(event.memberPrice)}</dd>
+                </div>
+                <div className="flex items-center justify-between px-3 py-2">
+                  <dt className="text-cf-muted">Non-member price</dt>
+                  <dd className="font-semibold text-cf-fg">{formatCurrency(event.nonMemberPrice)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between border-t border-cf-divider px-3 pt-4">
+                  <dt className="font-medium text-cf-fg">{user ? 'Your price' : 'Price'}</dt>
+                  <dd className="text-2xl font-bold text-cf-fg">{formatCurrency(price)}</dd>
+                </div>
+              </dl>
 
-            {!isMemberPrice && saving > 0 && (
-              <p className="mt-3 rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-800">
-                Members save {formatCurrency(saving)} on this event.{' '}
-                <Link className="font-medium underline" to={user ? '/me' : '/register'}>
-                  {user ? 'Join the club' : 'Sign up to join'}
-                </Link>
-              </p>
-            )}
-            {isMemberPrice && (
-              <p className="mt-3 flex items-center gap-2 text-sm text-emerald-700">
-                <LuCircleCheck aria-hidden="true" /> Member price applied
-              </p>
-            )}
-
-            <div className="mt-4 space-y-2">
-              <Button className="w-full" size="lg" disabled={!state.canBook} onClick={startBooking}>
-                {user ? 'Book my ticket' : 'Log in to book'}
-              </Button>
-              {!state.canBook && <p className="text-center text-sm text-slate-500">{state.reason}</p>}
-              {event.yourBooking?.status === 'CONFIRMED' && (
-                <Link to="/me/tickets" className="block text-center text-sm font-medium text-primary-700 hover:underline">
-                  View my ticket
-                </Link>
+              {!isMemberPrice && saving > 0 && (
+                <p className="rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-800">
+                  Members save {formatCurrency(saving)} on this event.{' '}
+                  <Link className="font-medium underline" to={user ? '/me' : '/register'}>
+                    {user ? 'Join the club' : 'Sign up to join'}
+                  </Link>
+                </p>
               )}
+              {isMemberPrice && (
+                <p className="flex items-center gap-2 text-sm text-emerald-700">
+                  <LuCircleCheck aria-hidden="true" /> Member price applied
+                </p>
+              )}
+
+              <div className="space-y-2">
+                <Button className="w-full" size="lg" disabled={!state.canBook} onClick={startBooking}>
+                  {user ? 'Book my ticket' : 'Log in to book'}
+                </Button>
+                {!state.canBook && <p className="text-center text-sm text-cf-muted">{state.reason}</p>}
+                {event.yourBooking?.status === 'CONFIRMED' && (
+                  <Link to="/me/tickets" className="block text-center text-sm font-medium text-primary-700 hover:underline">
+                    View my ticket
+                  </Link>
+                )}
+              </div>
             </div>
           </Card>
         </div>
       </main>
 
-      <Modal
+      <PaymentQrModal
         open={confirmOpen}
-        title="Confirm booking"
         onClose={() => setConfirmOpen(false)}
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setConfirmOpen(false)} disabled={booking}>Cancel</Button>
-            <Button onClick={confirmBooking} loading={booking}>Pay {formatCurrency(price)}</Button>
-          </>
-        }
-      >
-        <div className="space-y-3 text-sm text-slate-700">
-          <p><span className="font-semibold">{event.title}</span> on {formatDateTime(event.startAt)}</p>
-          <p>
-            Ticket price: <span className="font-semibold">{formatCurrency(price)}</span>
-            {isMemberPrice ? ' (member price)' : ''}. The server confirms the final price when you book.
-          </p>
-          <PaymentDisclaimer />
-        </div>
-      </Modal>
+        title={`Book Ticket: ${event.title}`}
+        amount={price}
+        note={`Ticket for ${event.title}`}
+        onConfirm={confirmBooking}
+        loading={booking}
+      />
+
+      <TicketConfirmationModal
+        open={Boolean(bookingResult)}
+        onClose={() => setBookingResult(null)}
+        bookingData={bookingResult}
+        event={event}
+      />
     </>
   );
 }

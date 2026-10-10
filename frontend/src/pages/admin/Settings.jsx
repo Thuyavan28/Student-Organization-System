@@ -3,7 +3,6 @@ import { LuPencil, LuPlay, LuPlus } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { membersApi } from '../../api/members.api';
 import { membershipsApi } from '../../api/memberships.api';
-import PaymentDisclaimer from '../../components/feature/PaymentDisclaimer';
 import Button from '../../components/ui/Button';
 import Card, { PageHeader } from '../../components/ui/Card';
 import { ErrorState } from '../../components/ui/EmptyState';
@@ -76,7 +75,7 @@ function TierForm({ tier, onClose, onSaved }) {
           <Input label="Merchandise discount (%)" type="number" min="0" max="100" value={form.merchDiscountPercent} onChange={set('merchDiscountPercent')} error={errors.merchDiscountPercent} />
         </div>
         <Input label="Perks" as="textarea" rows={3} value={form.perksText} onChange={set('perksText')} />
-        <p className="text-xs text-slate-500">Every tier lasts 12 months. Members pay the member price on tickets regardless of tier.</p>
+        <p className="text-xs text-cf-muted">Every tier lasts 12 months. Members pay the member price on tickets regardless of tier.</p>
       </form>
     </Modal>
   );
@@ -103,10 +102,10 @@ export default function Settings() {
   };
 
   const columns = [
-    { key: 'name', header: 'Tier', render: (row) => <span className="font-medium text-slate-900">{row.name}</span> },
+    { key: 'name', header: 'Tier', render: (row) => <span className="font-medium text-cf-fg">{row.name}</span> },
     { key: 'duesAmount', header: 'Yearly dues', className: 'tabular-nums', render: (row) => formatCurrency(row.duesAmount) },
     { key: 'merchDiscountPercent', header: 'Merch discount', render: (row) => `${row.merchDiscountPercent}%` },
-    { key: 'perksText', header: 'Perks', render: (row) => <span className="block max-w-sm text-xs text-slate-600">{row.perksText}</span> },
+    { key: 'perksText', header: 'Perks', render: (row) => <span className="block max-w-sm text-xs text-cf-muted">{row.perksText}</span> },
     {
       key: 'actions',
       header: '',
@@ -134,7 +133,7 @@ export default function Settings() {
           <div className="flex flex-wrap items-center gap-4">
             <Button icon={LuPlay} loading={running} onClick={runJob}>Run now</Button>
             {lastRun && (
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-cf-muted">
                 Last run: {lastRun.expired} memberships expired, {lastRun.remindersSent} reminders sent.
               </p>
             )}
@@ -142,8 +141,7 @@ export default function Settings() {
         </Card>
 
         <Card title="Payments">
-          <PaymentDisclaimer />
-          <p className="mt-3 text-sm text-slate-600">Every payment in ClubFlow is recorded with payment mode SIMULATED. No payment gateway is connected.</p>
+          <p className="mt-3 text-sm text-cf-muted">Every payment in ClubFlow is recorded with payment mode SIMULATED. No payment gateway is connected.</p>
         </Card>
       </div>
       {formState && <TierForm tier={formState.tier} onClose={() => setFormState(null)} onSaved={() => { setFormState(null); tiers.reload(); }} />}

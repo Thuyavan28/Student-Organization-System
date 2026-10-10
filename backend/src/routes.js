@@ -18,6 +18,7 @@ import { expensesRouter } from './modules/expenses/expenses.routes.js';
 import { transactionsRouter, financeRouter } from './modules/transactions/transactions.routes.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.routes.js';
 import { leadershipRouter } from './modules/leadership/leadership.routes.js';
+import { paymentsRouter } from './modules/payments/payments.routes.js';
 
 export const apiRouter = Router();
 
@@ -49,3 +50,4 @@ apiRouter.use('/transactions', transactionsRouter);
 apiRouter.use('/finance', financeRouter);
 apiRouter.use('/dashboard', dashboardRouter);
 apiRouter.use('/leadership', leadershipRouter);
+apiRouter.use('/payments', paymentsRouter);

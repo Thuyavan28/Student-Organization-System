@@ -24,8 +24,8 @@ export default function EventBookings() {
   const [page, setPage] = useState(1);
   const q = useDebounce(search);
 
-  const event = useFetch(() => eventsApi.get(id), [id]);
-  const stats = useFetch(() => eventsApi.stats(id), [id]);
+  const event = useFetch(() => eventsApi.get(id), ['event-detail', id]);
+  const stats = useFetch(() => eventsApi.stats(id), ['event-stats', id]);
   const bookings = useFetch(
     () =>
       eventsApi.bookings(id, {
@@ -35,18 +35,22 @@ export default function EventBookings() {
         page,
         pageSize: 15,
       }),
-    [id, q, status, checkedIn, page],
+    ['event-bookings-list', id, q, status, checkedIn, page],
   );
 
-  const s = stats.data;
+  const s = stats.data || {};
+  const ev = event.data || {};
+  const regCount = s.registrations ?? ev.bookedCount ?? 0;
+  const cap = s.capacity ?? ev.capacity ?? 0;
+  const remaining = s.seatsRemaining ?? Math.max(0, cap - regCount);
   const columns = [
     {
       key: 'attendee',
       header: 'Attendee',
       render: (row) => (
         <div>
-          <p className="font-medium text-slate-900">{row.user?.name}</p>
-          <p className="text-xs text-slate-500">{row.user?.email}</p>
+          <p className="font-medium text-cf-fg">{row.user?.name}</p>
+          <p className="text-xs text-cf-muted">{row.user?.email}</p>
         </div>
       ),
     },
@@ -68,14 +72,14 @@ export default function EventBookings() {
       header: 'Checked in',
       render: (row) => {
         const at = row.checkedInAt ?? row.ticket?.checkIn?.checkedInAt;
-        return at ? <span className="text-emerald-700">{formatDateTime(at)}</span> : <span className="text-slate-400">No</span>;
+        return at ? <span className="text-emerald-700">{formatDateTime(at)}</span> : <span className="text-cf-muted">No</span>;
       },
     },
   ];
 
   return (
     <>
-      <Link to="/admin/events" className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
+      <Link to="/admin/events" className="mb-3 inline-flex items-center gap-1 text-sm text-cf-muted hover:text-cf-fg">
         <LuArrowLeft aria-hidden="true" /> All events
       </Link>
       <PageHeader
@@ -86,19 +90,19 @@ export default function EventBookings() {
 
       {stats.error && <ErrorState message={stats.error} onRetry={stats.reload} />}
       {stats.loading && !s && <SkeletonStats count={4} />}
-      {s && (
+      {(stats.data || event.data) && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Registrations" value={`${s.registrations} / ${s.capacity}`} hint={`${s.seatsRemaining} seats remaining`} icon={LuTag} />
-          <StatCard label="Checked in" value={s.checkIns} hint={s.attendanceRate != null ? `${Math.round(s.attendanceRate * 100)}% attendance` : 'Event not finished'} icon={LuCircleCheck} tone="green" />
-          <StatCard label="No-shows" value={s.noShows ?? '-'} hint={s.noShows == null ? 'Known after the event' : undefined} icon={LuUserX} tone="amber" />
-          <StatCard label="Net result" value={formatCurrency(s.net)} hint={`${formatCurrency(s.revenue)} revenue, ${formatCurrency(s.expenses)} costs`} icon={LuDollarSign} tone={s.net >= 0 ? 'primary' : 'red'} />
+          <StatCard label="Registrations" value={`${regCount} / ${cap}`} hint={`${remaining} seats remaining`} icon={LuTag} />
+          <StatCard label="Checked in" value={s.checkIns ?? 0} hint={s.attendanceRate != null ? `${Math.round(s.attendanceRate * 100)}% attendance` : 'Event not finished'} icon={LuCircleCheck} tone="green" />
+          <StatCard label="No-shows" value={s.noShows ?? '-'} hint={s.noShows == null ? 'Known after event ends' : undefined} icon={LuUserX} tone="amber" />
+          <StatCard label="Net result" value={formatCurrency(s.net ?? 0)} hint={`${formatCurrency(s.revenue ?? 0)} revenue, ${formatCurrency(s.expenses ?? 0)} costs`} icon={LuDollarSign} tone={(s.net ?? 0) >= 0 ? 'primary' : 'red'} />
         </div>
       )}
 
       <Card className="mt-6" title="Bookings" padded={false}>
-        <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
+        <div className="flex flex-wrap items-end gap-3 border-b border-cf-divider p-4">
           <div className="relative min-w-[12rem] flex-1">
-            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cf-muted" aria-hidden="true" />
             <Input aria-label="Search attendees" className="[&_input]:pl-9" placeholder="Search name or email" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           </div>
           <Select

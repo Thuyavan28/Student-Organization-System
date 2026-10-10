@@ -4,20 +4,23 @@ import { LuLogOut, LuMenu, LuX, LuZap } from 'react-icons/lu';
 import { useAuth } from '../../hooks/useAuth';
 import { homeFor } from '../../utils/constants';
 import Button from '../ui/Button';
+import { useInShell } from './ShellContext';
 
 const LINKS = [
   { to: '/events', label: 'Events' },
   { to: '/announcements', label: 'Announcements' },
   { to: '/shop', label: 'Shop' },
+  { to: '/system-states', label: 'System States' },
 ];
 
 export default function PublicNavbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const inShell = useInShell();
 
   const linkClass = ({ isActive }) =>
-    `rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'bg-primary-50 text-primary-700' : 'text-slate-600 hover:text-slate-900'}`;
+    `rounded-xl border px-3.5 py-1.5 text-sm font-medium transition-colors ${isActive ? 'border-cf-border text-cf-fg' : 'border-transparent text-cf-fg hover:bg-cf-hover'}`;
 
   const handleLogout = () => {
     logout();
@@ -25,10 +28,13 @@ export default function PublicNavbar() {
     navigate('/');
   };
 
+  // Signed-in users see these pages inside the dashboard shell, which already has navigation.
+  if (inShell) return null;
+
   return (
-    <header className="no-print sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2 text-lg font-bold text-primary-700">
+    <header className="no-print sticky top-0 z-30 border-b border-cf-border bg-white">
+      <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-4 sm:px-8">
+        <Link to="/" className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-cf-fg">
           <LuZap aria-hidden="true" />
           ClubFlow
         </Link>
@@ -65,7 +71,7 @@ export default function PublicNavbar() {
 
         <button
           type="button"
-          className="rounded-md p-2 text-slate-600 md:hidden"
+          className="rounded-xl p-2 text-cf-fg hover:bg-cf-hover md:hidden"
           aria-label={open ? 'Close menu' : 'Open menu'}
           onClick={() => setOpen((value) => !value)}
         >
@@ -74,7 +80,7 @@ export default function PublicNavbar() {
       </div>
 
       {open && (
-        <div className="space-y-1 border-t border-slate-100 px-4 py-3 md:hidden">
+        <div className="space-y-1 border-t border-cf-divider px-4 py-3 md:hidden">
           {LINKS.map((link) => (
             <NavLink key={link.to} to={link.to} className={linkClass} onClick={() => setOpen(false)}>
               {link.label}

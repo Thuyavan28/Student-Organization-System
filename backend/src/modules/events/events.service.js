@@ -239,7 +239,7 @@ export const eventsService = {
         where,
         include: {
           user: { select: { id: true, name: true, email: true } },
-          ticket: { select: { id: true, status: true, checkIn: { select: { checkedInAt: true } } } },
+          ticket: { select: { id: true, token: true, status: true, checkIn: { select: { checkedInAt: true } } } },
         },
         orderBy: { createdAt: 'desc' },
         skip: page.skip,
@@ -249,6 +249,7 @@ export const eventsService = {
     ]);
     const data = rows.map(({ ticket, ...booking }) => ({
       ...booking,
+      ticketToken: ticket?.token ?? null,
       ticketStatus: ticket?.status ?? null,
       checkedInAt: ticket?.checkIn?.checkedInAt ?? null,
     }));

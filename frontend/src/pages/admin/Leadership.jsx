@@ -77,7 +77,7 @@ function LeadershipForm({ users, onClose, onSaved }) {
           <Input label="Term starts" type="date" value={form.termStart} onChange={set('termStart')} error={errors.termStart} />
           <Input label="Term ends" type="date" value={form.termEnd} onChange={set('termEnd')} error={errors.termEnd} />
         </div>
-        <p className="text-xs text-slate-500">The president position grants the Admin role and the treasurer position grants the Treasurer role while the term is active.</p>
+        <p className="text-xs text-cf-muted">The president position grants the Admin role and the treasurer position grants the Treasurer role while the term is active.</p>
       </form>
     </Modal>
   );
@@ -107,8 +107,8 @@ export default function Leadership() {
       header: 'Officer',
       render: (row) => (
         <div>
-          <p className="font-medium text-slate-900">{row.user?.name}</p>
-          <p className="text-xs text-slate-500">{row.user?.email}</p>
+          <p className="font-medium text-cf-fg">{row.user?.name}</p>
+          <p className="text-xs text-cf-muted">{row.user?.email}</p>
         </div>
       ),
     },

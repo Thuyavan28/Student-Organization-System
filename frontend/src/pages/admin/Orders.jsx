@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { LuCheck, LuSearch, LuShoppingBag, LuCircleX } from 'react-icons/lu';
 import { apiErrorMessage } from '../../api/axiosInstance';
 import { ordersApi } from '../../api/orders.api';
-import { itemLabel } from '../member/MyOrders';
+import { itemLabel } from '../../utils/itemLabel';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Card, { PageHeader } from '../../components/ui/Card';
@@ -34,6 +34,7 @@ export default function Orders() {
   const { data, meta, loading, error, reload } = useFetch(
     () => ordersApi.list({ q: q || undefined, status: status || undefined, page, pageSize: 15 }),
     [q, status, page],
+    { key: 'admin-orders-list' },
   );
 
   const apply = async () => {
@@ -57,8 +58,8 @@ export default function Orders() {
       header: 'Buyer',
       render: (row) => (
         <div>
-          <p className="font-medium text-slate-900">{row.user?.name}</p>
-          <p className="text-xs text-slate-500">{row.user?.email}</p>
+          <p className="font-medium text-cf-fg">{row.user?.name}</p>
+          <p className="text-xs text-cf-muted">{row.user?.email}</p>
         </div>
       ),
     },
@@ -98,9 +99,9 @@ export default function Orders() {
     <>
       <PageHeader title="Orders" subtitle="All merchandise orders. Cancelling returns stock and records a refund in the ledger." />
       <Card padded={false}>
-        <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
+        <div className="flex flex-wrap items-end gap-3 border-b border-cf-divider p-4">
           <div className="relative min-w-[12rem] flex-1">
-            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cf-muted" aria-hidden="true" />
             <Input aria-label="Search orders" className="[&_input]:pl-9" placeholder="Search buyer name or email" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           </div>
           <Select
@@ -115,7 +116,7 @@ export default function Orders() {
           <ErrorState message={error} onRetry={reload} />
         ) : (
           <>
-            <Table columns={columns} rows={data} loading={loading} emptyIcon={LuShoppingBag} emptyTitle="No orders found" emptyMessage="Orders placed in the shop will appear here." />
+            <Table columns={columns} rows={data || []} loading={loading} emptyIcon={LuShoppingBag} emptyTitle="No orders found" emptyMessage="Orders placed in the shop will appear here." />
             <Pagination meta={meta} onPage={setPage} />
           </>
         )}

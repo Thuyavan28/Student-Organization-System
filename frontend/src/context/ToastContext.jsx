@@ -22,17 +22,19 @@ export function ToastProvider({ children }) {
     [dismiss],
   );
 
-  const toast = useMemo(
+  const contextValue = useMemo(
     () => ({
-      success: (message) => push('success', message),
-      error: (message) => push('error', message),
-      info: (message) => push('info', message),
+      success: (message, title) => push('success', message, title),
+      error: (message, title) => push('error', message, title),
+      info: (message, title) => push('info', message, title),
+      toasts,
+      dismiss,
     }),
-    [push],
+    [push, toasts, dismiss],
   );
 
   return (
-    <ToastContext.Provider value={toast}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       <ToastViewport toasts={toasts} onDismiss={dismiss} />
     </ToastContext.Provider>
@@ -44,3 +46,4 @@ export function useToast() {
   if (!context) throw new Error('useToast must be used inside ToastProvider');
   return context;
 }
+

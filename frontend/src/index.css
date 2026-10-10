@@ -21,6 +21,14 @@
   --color-warning: #ea580c;
   --color-success: #16a34a;
   --color-pending: #d97706;
+
+  /* Chart color palette */
+  --chart-income: #16a34a;
+  --chart-expense: #dc2626;
+  --chart-blue: #2563eb;
+  --chart-purple: #7c3aed;
+  --chart-orange: #ea580c;
+  --chart-teal: #0891b2;
 }
 
 @layer base {
@@ -38,6 +46,7 @@
   body {
     background-color: var(--color-bg);
     color: var(--color-fg);
+    font-size: 0.875rem;
     min-height: 100vh;
   }
 
@@ -46,29 +55,65 @@
     .animate-pulse {
       animation: none;
     }
+    .page-enter {
+      animation: none;
+    }
   }
 }
 
 @layer components {
   /* Standard input: 1px black border, 48px height, rounded-xl */
   .input-base {
-    @apply block w-full rounded-xl border border-[#09090b] bg-white px-3 py-3 text-sm text-[#09090b]
+    @apply block w-full rounded-xl border border-[#09090b] bg-white px-3 py-2.5 text-sm text-[#09090b]
       placeholder:text-[#52525b] focus:outline-none focus:ring-2 focus:ring-[#09090b] focus:ring-offset-1
       disabled:bg-[#f4f4f5] disabled:text-[#52525b] disabled:cursor-not-allowed;
-    min-height: 48px;
+    min-height: 42px;
   }
 
   .select-base {
-    @apply block w-full rounded-xl border border-[#09090b] bg-white px-3 py-3 text-sm text-[#09090b]
+    @apply block w-full rounded-xl border border-[#09090b] bg-white px-3 py-2.5 text-sm text-[#09090b]
       focus:outline-none focus:ring-2 focus:ring-[#09090b] focus:ring-offset-1
       disabled:bg-[#f4f4f5] disabled:cursor-not-allowed appearance-none;
-    min-height: 48px;
+    min-height: 42px;
   }
 
   /* Skeleton block with soft pulse */
   .skeleton {
     @apply rounded-md bg-[#e4e4e7] animate-pulse;
   }
+}
+
+/* Page enter animation — triggered on each lazy-loaded route mount */
+@keyframes page-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-fade-up 0.25s ease-out forwards;
+}
+
+/* Top progress bar shimmer  */
+@keyframes progress-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.progress-bar-shimmer {
+  background: linear-gradient(
+    90deg,
+    #09090b 0%,
+    #4b5563 40%,
+    #09090b 100%
+  );
+  background-size: 200% 100%;
+  animation: progress-shimmer 1.4s linear infinite;
 }
 
 @media print {
@@ -78,4 +123,117 @@
   body {
     background: white;
   }
+}
+
+/* Toast Animations */
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-toast-enter {
+  animation: toast-slide-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-toast-progress {
+  animation: toast-progress 4s linear forwards;
+}
+
+/* QR Code Camera Scanner Fixes */
+#clubflow-qr-region {
+  position: relative !important;
+  width: 100% !important;
+  min-height: 280px !important;
+  height: 320px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #020617 !important;
+  border-radius: 1rem !important;
+  overflow: hidden !important;
+}
+
+#clubflow-qr-region video {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 280px !important;
+  max-height: 400px !important;
+  object-fit: cover !important;
+  display: block !important;
+  border-radius: 0.85rem !important;
+  background-color: #000000 !important;
+}
+
+#clubflow-qr-region canvas {
+  display: none !important;
+}
+
+#clubflow-qr-region #qr-shaded-region {
+  display: none !important; /* Hide dark overlay so live camera video is never pitch black */
+}
+
+
+/* Auth + landing visuals (monochrome) */
+.auth-brand::before,
+.hero-grid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse at 30% 40%, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at 30% 40%, #000 20%, transparent 75%);
+  pointer-events: none;
+}
+
+.auth-brand::after {
+  content: '';
+  position: absolute;
+  right: -120px;
+  bottom: -120px;
+  width: 380px;
+  height: 380px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 60px rgba(255, 255, 255, 0.03), 0 0 0 120px rgba(255, 255, 255, 0.02);
+  pointer-events: none;
+}
+
+/* Scroll-reveal: elements fade up once when they enter the viewport */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.float-slow { animation: float-y 6s ease-in-out infinite; }
+.float-slower { animation: float-y 8s ease-in-out infinite reverse; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .float-slow, .float-slower { animation: none; }
 }

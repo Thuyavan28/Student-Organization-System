@@ -14,8 +14,11 @@ export const app = express();
 app.disable('x-powered-by');
 app.use(timing);
 app.use(compression());
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: env.CLIENT_ORIGIN, exposedHeaders: ['Server-Timing', 'ETag'] }));
+app.use(cors({
+  origin: (origin, callback) => callback(null, true),
+  credentials: true,
+  exposedHeaders: ['Server-Timing', 'ETag'],
+}));
 app.use(express.json({ limit: '1mb' }));
 app.use('/uploads', express.static(UPLOAD_DIR));
 app.use('/api', apiRouter);

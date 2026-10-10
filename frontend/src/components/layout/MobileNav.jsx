@@ -4,6 +4,7 @@ import { LuEllipsis } from 'react-icons/lu';
 import { navItemsFor } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 import Modal from '../ui/Modal';
+import UserPanel from './UserPanel';
 
 const VISIBLE_COUNT = 4;
 
@@ -16,7 +17,7 @@ export default function MobileNav() {
 
   const itemClass = ({ isActive }) =>
     `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
-      isActive ? 'text-cf-fg' : 'text-cf-muted'
+      isActive ? 'text-cf-fg font-semibold' : 'text-cf-muted'
     }`;
 
   return (
@@ -31,12 +32,10 @@ export default function MobileNav() {
             {item.label}
           </NavLink>
         ))}
-        {overflow.length > 0 && (
-          <button type="button" className={itemClass({ isActive: false })} onClick={() => setMoreOpen(true)}>
-            <LuEllipsis className="h-5 w-5" aria-hidden="true" />
-            More
-          </button>
-        )}
+        <button type="button" className={itemClass({ isActive: false })} onClick={() => setMoreOpen(true)}>
+          <LuEllipsis className="h-5 w-5" aria-hidden="true" />
+          More
+        </button>
       </nav>
       <Modal open={moreOpen} title="More" onClose={() => setMoreOpen(false)} size="sm">
         <ul className="space-y-1">
@@ -48,7 +47,7 @@ export default function MobileNav() {
                 onClick={() => setMoreOpen(false)}
                 className={({ isActive }) =>
                   `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive ? 'bg-cf-fg text-white' : 'text-cf-muted hover:bg-cf-hover hover:text-cf-fg'
+                    isActive ? 'border border-cf-border text-cf-fg' : 'border border-transparent text-cf-fg hover:bg-cf-hover'
                   }`
                 }
               >
@@ -58,6 +57,9 @@ export default function MobileNav() {
             </li>
           ))}
         </ul>
+        <div className={`${overflow.length > 0 ? 'mt-4 border-t border-cf-divider pt-4' : ''}`}>
+          <UserPanel onLogout={() => setMoreOpen(false)} />
+        </div>
       </Modal>
     </>
   );

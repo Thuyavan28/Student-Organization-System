@@ -40,7 +40,7 @@ export default function Events() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <PageHeader title="Events" subtitle="Member prices apply automatically when you are logged in with an active membership." />
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex rounded-lg bg-slate-100 p-1" role="tablist">
+          <div className="inline-flex rounded-lg bg-cf-subtle p-1" role="tablist">
             {TABS.map((item) => (
               <button
                 key={item.value}
@@ -48,14 +48,14 @@ export default function Events() {
                 role="tab"
                 aria-selected={tab === item.value}
                 onClick={() => { setTab(item.value); setPage(1); }}
-                className={`rounded-md px-4 py-1.5 text-sm font-medium ${tab === item.value ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-600'}`}
+                className={`rounded-md px-4 py-1.5 text-sm font-medium ${tab === item.value ? 'bg-white text-primary-700 ' : 'text-cf-muted'}`}
               >
                 {item.label}
               </button>
             ))}
           </div>
           <div className="relative w-full sm:w-72">
-            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-cf-muted" aria-hidden="true" />
             <Input
               aria-label="Search events"
               className="[&_input]:pl-9"
@@ -78,7 +78,7 @@ export default function Events() {
                 <EventCard key={event.id} event={event} />
               ))}
             </div>
-            <div className="mt-4 rounded-xl border border-slate-200 bg-white">
+            <div className="mt-4 rounded-xl border border-cf-divider bg-white">
               <Pagination meta={meta} onPage={setPage} />
             </div>
           </>

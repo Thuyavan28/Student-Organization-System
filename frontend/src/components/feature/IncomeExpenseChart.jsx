@@ -5,12 +5,13 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import { formatMonth } from '../../utils/formatDate';
 import Button from '../ui/Button';
 
-// Categorical slots 1 and 2 of the validated palette; income and expense are two entities on one axis.
-export const INCOME_COLOR = '#2a78d6';
-export const EXPENSE_COLOR = '#eb6834';
-const GRID = '#e1e0d9';
-const AXIS = '#c3c2b7';
-const MUTED = '#898781';
+// Income = green, Expense = red (matches Dashboard and design system)
+export const INCOME_COLOR = '#16a34a';
+export const EXPENSE_COLOR = '#dc2626';
+const GRID = '#e4e4e7';
+const AXIS = '#d4d4d8';
+const MUTED = '#71717a';
+
 
 export function compactRupees(paise) {
   const rupees = Math.abs(paise) / 100;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-// Thin 3px black bar at the top of the viewport, driven by a loading boolean.
-// Appears after 150ms to avoid flicker on fast responses. Stays for 300ms after loading ends.
+// Thin 4px gradient bar at the top of the viewport, driven by a loading boolean.
+// Appears after 120ms to avoid flicker on fast responses. Stays for 320ms after loading ends.
 export default function TopProgressBar({ loading }) {
   const [width, setWidth] = useState(0);
   const [visible, setVisible] = useState(false);
@@ -15,13 +15,13 @@ export default function TopProgressBar({ loading }) {
       enterTimer.current = setTimeout(() => {
         setVisible(true);
         setWidth(0);
-        // Ramp from 0 to 80% quickly, then slow down to simulate deterministic progress.
         raf.current = requestAnimationFrame(() => {
-          setWidth(30);
-          setTimeout(() => setWidth(60), 300);
-          setTimeout(() => setWidth(80), 800);
+          setWidth(25);
+          setTimeout(() => setWidth(55), 200);
+          setTimeout(() => setWidth(75), 600);
+          setTimeout(() => setWidth(88), 1200);
         });
-      }, 150);
+      }, 120);
     } else {
       clearTimeout(enterTimer.current);
       cancelAnimationFrame(raf.current);
@@ -30,7 +30,7 @@ export default function TopProgressBar({ loading }) {
         exitTimer.current = setTimeout(() => {
           setVisible(false);
           setWidth(0);
-        }, 350);
+        }, 320);
       }
     }
     return () => {
@@ -48,8 +48,9 @@ export default function TopProgressBar({ loading }) {
       role="progressbar"
       aria-label="Page loading"
       aria-hidden="true"
-      className="fixed top-0 left-0 z-50 h-[3px] bg-cf-fg transition-all duration-300 ease-out"
+      className={`fixed top-0 left-0 z-[9999] h-[4px] transition-all duration-300 ease-out ${loading ? 'progress-bar-shimmer' : 'bg-cf-fg'}`}
       style={{ width: `${width}%` }}
     />
   );
 }
+

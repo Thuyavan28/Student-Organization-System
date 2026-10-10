@@ -16,6 +16,23 @@ function getTransporter() {
   return transporter;
 }
 
+// One email to one recipient, optionally with attachments (used for inline QR codes).
+// Never throws: a mail problem must not undo a purchase. Same status values as sendBulkEmail.
+export async function sendEmail({ to, subject, text, html, attachments }) {
+  const smtp = getTransporter();
+  if (!smtp) {
+    if (env.NODE_ENV !== 'test') console.log(`[mailer] SMTP not configured, would email ${to}: ${subject}`);
+    return { status: 'LOGGED' };
+  }
+  try {
+    await smtp.sendMail({ from: env.MAIL_FROM, to, subject, text, html, attachments });
+    return { status: 'SENT' };
+  } catch (err) {
+    console.error('[mailer] delivery failed:', err.message);
+    return { status: 'FAILED' };
+  }
+}
+
 // Returns SENT when SMTP delivered, LOGGED when SMTP is not configured, FAILED on a delivery error.
 export async function sendBulkEmail({ to, subject, text }) {
   const count = to.length;

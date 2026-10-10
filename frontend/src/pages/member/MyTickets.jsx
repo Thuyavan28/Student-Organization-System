@@ -52,7 +52,7 @@ export default function MyTickets() {
           {data.map((booking) => (
             <TicketCard key={booking.id} booking={booking} onCancel={setToCancel} />
           ))}
-          <div className="rounded-xl border border-slate-200 bg-white">
+          <div className="rounded-xl border border-cf-divider bg-white">
             <Pagination meta={meta} onPage={setPage} />
           </div>
         </div>

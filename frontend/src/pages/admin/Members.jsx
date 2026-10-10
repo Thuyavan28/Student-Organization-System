@@ -4,7 +4,6 @@ import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { membersApi } from '../../api/members.api';
 import { useMembersList, useMembersStats, useCreateMember, useUpdateMember, useMarkMemberPaid } from '../../hooks/queries/members.queries';
 import { useMembershipTiers } from '../../hooks/queries/memberships.queries';
-import PaymentDisclaimer from '../../components/feature/PaymentDisclaimer';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -80,7 +79,6 @@ function MemberForm({ member, tiers, onClose, onSaved }) {
             <Input id="m-email" label="Email" type="email" value={form.email} onChange={set('email')} error={errors.email} />
             <Input id="m-password" label="Password" type="password" value={form.password} onChange={set('password')} error={errors.password} />
             <Input id="m-sid" label="Student ID" value={form.studentId} onChange={set('studentId')} error={errors.studentId} />
-            <PaymentDisclaimer />
           </>
         )}
         <Input id="m-dept" label="Department" value={form.department} onChange={set('department')} />
@@ -123,8 +121,12 @@ export default function Members() {
 
   const rows = listData?.data ?? [];
   const meta = listData?.meta ?? null;
-  const stats = statsData?.data;
+  const stats = statsData?.data ?? statsData;
   const tiers = tiersData?.data ?? [];
+
+  const totalMembers = stats?.total ?? meta?.total ?? rows.length ?? 0;
+  const activeMembers = stats?.active ?? rows.filter((r) => r.isActive || r.membershipStatus === 'ACTIVE').length ?? 0;
+  const expiringMembers = stats?.expiringSoon ?? 0;
 
   const isAdmin = user?.role === 'ADMIN';
 
@@ -163,13 +165,13 @@ export default function Members() {
       />
 
       {/* Stats */}
-      {statsLoading ? (
+      {statsLoading && !stats ? (
         <StatCardSkeleton count={3} />
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-6">
-          <StatCard label="Total members" value={stats?.total} icon={LuUsers} />
-          <StatCard label="Active" value={stats?.active} icon={LuUsers} tone="success" />
-          <StatCard label="Expiring in 30 days" value={stats?.expiringSoon} icon={LuUsers} tone="warning" />
+          <StatCard label="Total members" value={totalMembers} icon={LuUsers} />
+          <StatCard label="Active" value={activeMembers} icon={LuUsers} tone="success" />
+          <StatCard label="Expiring in 30 days" value={expiringMembers} icon={LuUsers} tone="warning" />
         </div>
       )}
 

@@ -1,6 +1,6 @@
 import {
   LuUsers, LuCalendar, LuSquareCheck, LuBell, LuShoppingBag, LuPackage, LuHeart,
-  LuDollarSign, LuFileText, LuAward, LuSettings, LuUser, LuTag, LuClipboard, LuLayoutDashboard,
+  LuDollarSign, LuFileText, LuAward, LuSettings, LuUser, LuTag, LuClipboard, LuLayoutDashboard, LuUserCog,
 } from 'react-icons/lu';
 
 export const ROLES = {
@@ -70,7 +70,6 @@ export const LEADERSHIP_POSITIONS = [
 export const SIZE_ORDER = ['S', 'M', 'L', 'XL', 'XXL', 'ONE_SIZE'];
 export const LOW_STOCK_THRESHOLD = 5;
 
-export const PAYMENT_DISCLAIMER = 'Demo payment: no real money is charged';
 
 export function humanize(value) {
   if (!value) return '';
@@ -91,13 +90,14 @@ export const MEMBER_NAV = [
 export const ADMIN_NAV = [
   { to: '/admin', label: 'Dashboard', icon: LuLayoutDashboard, end: true, roles: [ROLES.ADMIN, ROLES.TREASURER] },
   { to: '/admin/members', label: 'Members', icon: LuUsers, roles: [ROLES.ADMIN, ROLES.TREASURER] },
-  { to: '/admin/events', label: 'Events', icon: LuCalendar, roles: [ROLES.ADMIN] },
+  { to: '/admin/staff', label: 'Staff accounts', icon: LuUserCog, roles: [ROLES.ADMIN] },
+  { to: '/admin/events', label: 'Events', icon: LuCalendar, roles: [ROLES.ADMIN, ROLES.TREASURER] },
   { to: '/admin/check-in', label: 'Check-in', icon: LuSquareCheck, roles: [ROLES.ADMIN, ROLES.VOLUNTEER] },
   { to: '/admin/announcements', label: 'Announcements', icon: LuBell, roles: [ROLES.ADMIN] },
   { to: '/admin/merchandise', label: 'Merchandise', icon: LuPackage, roles: [ROLES.ADMIN] },
   { to: '/admin/orders', label: 'Orders', icon: LuShoppingBag, roles: [ROLES.ADMIN, ROLES.TREASURER] },
   { to: '/admin/fundraisers', label: 'Fundraisers', icon: LuHeart, roles: [ROLES.ADMIN, ROLES.TREASURER, ROLES.VOLUNTEER] },
-  { to: '/admin/finance', label: 'finance', icon: LuDollarSign, roles: [ROLES.ADMIN, ROLES.TREASURER] },
+  { to: '/admin/finance', label: 'Finance', icon: LuDollarSign, roles: [ROLES.ADMIN, ROLES.TREASURER] },
   { to: '/admin/expenses', label: 'Expenses', icon: LuFileText, roles: [ROLES.ADMIN, ROLES.TREASURER] },
   { to: '/admin/leadership', label: 'Leadership', icon: LuAward, roles: [ROLES.ADMIN, ROLES.TREASURER] },
   { to: '/admin/settings', label: 'Settings', icon: LuSettings, roles: [ROLES.ADMIN] },

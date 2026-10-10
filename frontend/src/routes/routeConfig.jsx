@@ -10,6 +10,7 @@ const Announcements = lazy(() => import('../pages/public/Announcements'));
 const Shop = lazy(() => import('../pages/public/Shop'));
 const Login = lazy(() => import('../pages/public/Login'));
 const Register = lazy(() => import('../pages/public/Register'));
+const MobilePay = lazy(() => import('../pages/public/MobilePay'));
 
 const MyProfile = lazy(() => import('../pages/member/MyProfile'));
 const MyTickets = lazy(() => import('../pages/member/MyTickets'));
@@ -18,6 +19,7 @@ const MyExpenses = lazy(() => import('../pages/member/MyExpenses'));
 
 const Dashboard = lazy(() => import('../pages/admin/Dashboard'));
 const Members = lazy(() => import('../pages/admin/Members'));
+const Staff = lazy(() => import('../pages/admin/Staff'));
 const AdminEvents = lazy(() => import('../pages/admin/Events'));
 const EventBookings = lazy(() => import('../pages/admin/EventBookings'));
 const CheckIn = lazy(() => import('../pages/admin/CheckIn'));
@@ -31,15 +33,20 @@ const Expenses = lazy(() => import('../pages/admin/Expenses'));
 const Leadership = lazy(() => import('../pages/admin/Leadership'));
 const Settings = lazy(() => import('../pages/admin/Settings'));
 
-// `shell: false` pages render their own public navbar. `roles` limits who may open an app page.
+const SystemStatesShowcase = lazy(() => import('../pages/public/SystemStatesShowcase'));
+
+// `shellWhenSignedIn` pages open inside the dashboard (sidebar) for logged-in users and keep the public navbar for visitors. `roles` limits who may open an app page.
 export const publicRoutes = [
   { path: '/', Component: Landing },
-  { path: '/events', Component: Events },
-  { path: '/events/:id', Component: EventDetail },
-  { path: '/announcements', Component: Announcements },
-  { path: '/shop', Component: Shop },
+  { path: '/events', Component: Events, shellWhenSignedIn: true },
+  { path: '/events/:id', Component: EventDetail, shellWhenSignedIn: true },
+  { path: '/announcements', Component: Announcements, shellWhenSignedIn: true },
+  { path: '/shop', Component: Shop, shellWhenSignedIn: true },
+  { path: '/pay/:sessionId', Component: MobilePay },
   { path: '/login', Component: Login },
   { path: '/register', Component: Register },
+  { path: '/system-states', Component: SystemStatesShowcase },
+  { path: '/screens-demo', Component: SystemStatesShowcase },
 ];
 
 export const appRoutes = [
@@ -49,7 +56,8 @@ export const appRoutes = [
   { path: '/me/expenses', Component: MyExpenses, roles: [VOLUNTEER, ADMIN, TREASURER] },
   { path: '/admin', Component: Dashboard, roles: [ADMIN, TREASURER] },
   { path: '/admin/members', Component: Members, roles: [ADMIN, TREASURER] },
-  { path: '/admin/events', Component: AdminEvents, roles: [ADMIN] },
+  { path: '/admin/staff', Component: Staff, roles: [ADMIN] },
+  { path: '/admin/events', Component: AdminEvents, roles: [ADMIN, TREASURER] },
   { path: '/admin/events/:id/bookings', Component: EventBookings, roles: [ADMIN, TREASURER] },
   { path: '/admin/check-in', Component: CheckIn, roles: [ADMIN, VOLUNTEER] },
   { path: '/admin/announcements', Component: AdminAnnouncements, roles: [ADMIN] },
