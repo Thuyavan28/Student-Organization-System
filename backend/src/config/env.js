@@ -13,6 +13,8 @@ const envSchema = z.object({
   SMTP_PORT: z.coerce.number().int().default(587),
   SMTP_USER: z.string().optional().default(''),
   SMTP_PASS: z.string().optional().default(''),
+  // Optional. When set (for example redis://127.0.0.1:6379) responses are cached in Redis; empty means in-memory only.
+  REDIS_URL: z.string().optional().default(''),
   GOOGLE_CLIENT_ID: z.string().optional().default(''),
   MAIL_FROM: z.string().default('ClubFlow <no-reply@skyline.example.com>'),
 });

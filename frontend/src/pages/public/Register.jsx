@@ -7,7 +7,9 @@ import GoogleAuthButton, { OrDivider } from '../../components/feature/GoogleAuth
 import AuthLayout from '../../components/layout/AuthLayout';
 import Input from '../../components/ui/Input';
 import PasswordInput from '../../components/ui/PasswordInput';
+import SignInTransition from '../../components/ui/SignInTransition';
 import { useAuth } from '../../hooks/useAuth';
+import { usePostLogin } from '../../hooks/usePostLogin';
 import { homeFor } from '../../utils/constants';
 
 function validate(form) {
@@ -28,8 +30,10 @@ export default function Register() {
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const post = usePostLogin();
 
-  if (user) return <Navigate to={homeFor(user.role)} replace />;
+  if (post.transition) return <SignInTransition {...post.transition} />;
+  if (user && !post.active.current) return <Navigate to={homeFor(user.role)} replace />;
 
   const set = (name) => (event) => setForm((current) => ({ ...current, [name]: event.target.value }));
 
@@ -41,10 +45,12 @@ export default function Register() {
     if (Object.keys(found).length) return;
 
     setSaving(true);
+    post.begin();
     try {
       const created = await register({ name: form.name.trim(), email: form.email.trim(), password: form.password });
-      navigate(homeFor(created.role), { replace: true });
+      await post.finish(created, homeFor(created.role));
     } catch (error) {
+      post.cancel();
       const body = apiErrorBody(error);
       // Already registered with this email: take them to log in with it instead of showing a dead end.
       if (body?.code === 'EMAIL_TAKEN') {
@@ -83,10 +89,12 @@ export default function Register() {
         <GoogleAuthButton
           text="signup_with"
           onCredential={async (accessToken) => {
+            post.begin();
             try {
               const signedIn = await loginWithGoogle(accessToken, 'signup');
-              navigate(homeFor(signedIn.role), { replace: true });
+              await post.finish(signedIn, homeFor(signedIn.role));
             } catch (error) {
+              post.cancel();
               const body = apiErrorBody(error);
               // This Google email already has an account: do not sign in as if it were new, go to log in.
               if (body?.code === 'ACCOUNT_EXISTS') {

@@ -237,3 +237,18 @@
   .reveal { opacity: 1; transform: none; transition: none; }
   .float-slow, .float-slower { animation: none; }
 }
+
+/* Sign-in transition screen */
+@keyframes signin-slide {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(320%); }
+}
+@keyframes signin-pulse {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.signin-bar { animation: signin-slide 1.2s ease-in-out infinite; }
+.signin-ring { animation: signin-pulse 1.4s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .signin-bar, .signin-ring { animation: none; }
+}

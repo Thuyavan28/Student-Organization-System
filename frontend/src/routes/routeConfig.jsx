@@ -83,5 +83,5 @@ export const appRoutes = [
 export function preloadRoute(path) {
   const route = [...publicRoutes, ...appRoutes].find((item) => item.path === path);
   const loader = route && loaders.get(route.Component);
-  if (loader) loader().catch(() => {});
+  return loader ? loader().catch(() => {}) : Promise.resolve();
 }

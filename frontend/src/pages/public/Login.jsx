@@ -7,7 +7,9 @@ import GoogleAuthButton, { OrDivider } from '../../components/feature/GoogleAuth
 import AuthLayout from '../../components/layout/AuthLayout';
 import Input from '../../components/ui/Input';
 import PasswordInput from '../../components/ui/PasswordInput';
+import SignInTransition from '../../components/ui/SignInTransition';
 import { useAuth } from '../../hooks/useAuth';
+import { usePostLogin } from '../../hooks/usePostLogin';
 import { homeFor } from '../../utils/constants';
 
 const DEMO_ACCOUNTS = [
@@ -33,8 +35,11 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const post = usePostLogin();
 
-  if (user) return <Navigate to={next ?? homeFor(user.role)} replace />;
+  // While a sign-in is in progress the transition screen decides where to go, not this redirect.
+  if (post.transition) return <SignInTransition {...post.transition} />;
+  if (user && !post.active.current) return <Navigate to={next ?? homeFor(user.role)} replace />;
 
   const set = (name) => (event) => setForm((current) => ({ ...current, [name]: event.target.value }));
 
@@ -48,10 +53,12 @@ export default function Login() {
     if (Object.keys(found).length) return;
 
     setSaving(true);
+    post.begin();
     try {
       const signedIn = await login(form.email.trim(), form.password);
-      navigate(next ?? homeFor(signedIn.role), { replace: true });
+      await post.finish(signedIn, next ?? homeFor(signedIn.role));
     } catch (error) {
+      post.cancel();
       setFormError(apiErrorMessage(error, 'Could not log in'));
     } finally {
       setSaving(false);
@@ -103,10 +110,12 @@ export default function Login() {
         <GoogleAuthButton
           text="continue_with"
           onCredential={async (accessToken) => {
+            post.begin();
             try {
               const signedIn = await loginWithGoogle(accessToken, 'login');
-              navigate(next ?? homeFor(signedIn.role), { replace: true });
+              await post.finish(signedIn, next ?? homeFor(signedIn.role));
             } catch (error) {
+              post.cancel();
               const body = apiErrorBody(error);
               // No account for this Google email yet: send them to sign up instead of creating one silently.
               if (body?.code === 'ACCOUNT_NOT_FOUND') {

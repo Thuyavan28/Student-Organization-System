@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from './config/prisma.js';
 import { asyncHandler } from './utils/asyncHandler.js';
+import * as cache from './utils/memoryCache.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { usersRouter } from './modules/users/users.routes.js';
 import { membersRouter } from './modules/members/members.routes.js';
@@ -31,6 +32,9 @@ apiRouter.get('/health/db', asyncHandler(async (req, res) => {
   await prisma.$queryRaw`SELECT 1`;
   res.json({ data: { status: 'ok', db: 'up', dbMs: Math.round(performance.now() - startedAt), time: new Date().toISOString() } });
 }));
+
+// Which cache backend is active (redis or memory) and its hit rate; no database work.
+apiRouter.get('/health/cache', (req, res) => res.json({ data: cache.info() }));
 
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/users', usersRouter);
