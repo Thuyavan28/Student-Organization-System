@@ -11,7 +11,7 @@ import {
   LuCircleCheck,
   LuCircleX,
   LuTriangleAlert,
-  LuSparkles,
+  LuRefreshCw,
 } from 'react-icons/lu';
 import { apiErrorMessage } from '../../api/axiosInstance';
 import { checkinsApi } from '../../api/checkins.api';
@@ -263,7 +263,7 @@ export default function CheckIn() {
               size="sm"
               variant="secondary"
               onClick={() => loadEventData(eventId)}
-              icon={LuSparkles}
+              icon={LuRefreshCw}
             >
               Refresh Stats
             </Button>

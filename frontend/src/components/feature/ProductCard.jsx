@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LuMinus, LuPlus, LuShoppingCart, LuSparkles, LuTag } from 'react-icons/lu';
+import { LuMinus, LuPlus, LuShoppingCart, LuBadgePercent, LuTag } from 'react-icons/lu';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import { formatCurrency } from '../../utils/formatCurrency';
 import Badge from '../ui/Badge';
@@ -66,7 +66,7 @@ export default function ProductCard({ product, onAdd }) {
             </span>
           ) : discounted ? (
             <span className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-md">
-              <LuSparkles className="h-3 w-3" /> {product.merchDiscountPercent}% Member Deal
+              <LuBadgePercent className="h-3 w-3" /> {product.merchDiscountPercent}% Member Deal
             </span>
           ) : (
             <span className="rounded-lg bg-slate-900/80 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">

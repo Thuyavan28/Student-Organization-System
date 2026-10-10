@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  LuSparkles,
+  LuPlus,
   LuLoader,
   LuInbox,
   LuCircleCheck,
@@ -124,7 +124,7 @@ export default function SystemStatesShowcase() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/20 border border-indigo-400/30 px-3 py-1 text-xs font-bold text-indigo-200">
-              <LuSparkles className="h-3.5 w-3.5 text-indigo-300" />
+              <LuPlus className="h-3.5 w-3.5 text-indigo-300" />
               <span>Mandatory Website States Suite</span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight">System Screens & States</h1>
@@ -254,7 +254,7 @@ export default function SystemStatesShowcase() {
                 preset="first-use"
                 title="No events created yet"
                 message="Start organizing campus workshops, hackathons, and gatherings by launching your first club event."
-                action={<Button icon={LuSparkles}>Create First Event</Button>}
+                action={<Button icon={LuPlus}>Create First Event</Button>}
               />
             )}
 
@@ -652,7 +652,7 @@ export default function SystemStatesShowcase() {
                 <Button
                   variant="secondary"
                   onClick={triggerSessionWarning}
-                  icon={LuSparkles}
+                  icon={LuPlus}
                   className="font-bold"
                 >
                   Simulate 60s Idle Warning

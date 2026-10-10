@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { LuClock, LuLogIn, LuShieldCheck, LuSparkles } from 'react-icons/lu';
+import { LuClock, LuLogIn, LuShieldCheck, LuRefreshCw } from 'react-icons/lu';
 import Button from './Button';
 import Modal from './Modal';
 import { getToken, setToken } from '../../api/axiosInstance';
@@ -109,7 +109,7 @@ export default function SessionExpiredModal() {
             <Button variant="secondary" onClick={() => { setIsWarning(false); setOpen(true); }} size="sm">
               Sign out now
             </Button>
-            <Button onClick={handleStaySignedIn} icon={LuSparkles} size="sm" className="font-bold shadow-md">
+            <Button onClick={handleStaySignedIn} icon={LuRefreshCw} size="sm" className="font-bold shadow-md">
               Stay signed in ({countdown}s)
             </Button>
           </div>

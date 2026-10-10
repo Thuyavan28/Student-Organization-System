@@ -10,7 +10,7 @@ import {
   LuUsers,
   LuTicket,
   LuClock,
-  LuSparkles,
+  LuFilePen,
   LuCheckCheck,
   LuMapPin,
   LuTag,
@@ -238,7 +238,7 @@ export default function Events() {
         <StatCard label="Published / live" value={publishedEvents} sub="Open for ticket booking" icon={LuClock} />
         <StatCard label="Completed" value={completedEvents} sub="Past campus events" icon={LuCheckCheck} />
         <StatCard label="Tickets sold" value={totalTicketsSold} sub="Confirmed seats booked" icon={LuTicket} />
-        <StatCard label="Drafts" value={draftEvents} sub="Unpublished planning" icon={LuSparkles} />
+        <StatCard label="Drafts" value={draftEvents} sub="Unpublished planning" icon={LuFilePen} />
       </div>
 
       {/* Main Events Table Card */}

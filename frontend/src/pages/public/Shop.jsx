@@ -4,7 +4,7 @@ import {
   LuPackage,
   LuShoppingCart,
   LuTrash2,
-  LuSparkles,
+  LuBadgeCheck,
   LuSearch,
   LuCheck,
   LuShieldCheck,
@@ -142,7 +142,7 @@ export default function Shop() {
         <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-8 sm:p-12 shadow-xl border border-slate-800">
           <div className="relative z-10 max-w-2xl space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full bg-slate-800/80 px-3.5 py-1 text-xs font-bold text-emerald-400 border border-slate-700/60 backdrop-blur-sm">
-              <LuSparkles className="h-3.5 w-3.5" />
+              <LuBadgeCheck className="h-3.5 w-3.5" />
               Official Collegiate Collection
             </div>
 

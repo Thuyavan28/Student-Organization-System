@@ -6,7 +6,7 @@ import {
   LuTicket,
   LuShoppingBag,
   LuCalendar,
-  LuSparkles,
+  LuGift,
   LuShieldCheck,
   LuMail,
   LuPhone,
@@ -422,7 +422,7 @@ export default function MyProfile() {
 
               {member.tier?.perksText && (
                 <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3.5 text-xs text-emerald-900 flex items-start gap-2">
-                  <LuSparkles className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <LuGift className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold">Tier Privileges: </span>
                     <span>{member.tier.perksText}</span>

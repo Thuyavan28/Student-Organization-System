@@ -10,7 +10,6 @@ import {
   LuUsers,
   LuCalendar,
   LuCircleCheck,
-  LuSparkles,
 } from 'react-icons/lu';
 import { announcementsApi } from '../../api/announcements.api';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
