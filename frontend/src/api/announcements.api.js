@@ -6,4 +6,5 @@ export const announcementsApi = {
   create: (body) => http.post('/announcements', body).then((r) => r.data),
   update: (id, body) => http.patch(`/announcements/${id}`, body).then((r) => r.data),
   archive: (id) => http.post(`/announcements/${id}/archive`).then((r) => r.data),
+  setPin: (id, pinned) => http.patch(`/announcements/${id}`, { isPinned: pinned }).then((r) => r.data),
 };

@@ -1,32 +1,29 @@
-import { forwardRef, useId } from 'react';
+import { forwardRef } from 'react';
+import { LuChevronDown } from 'react-icons/lu';
 
-const Select = forwardRef(function Select(
-  { label, error, options = [], placeholder, className = '', ...rest },
-  ref,
-) {
-  const id = useId();
+const Select = forwardRef(function Select({ label, id, error, children, className = '', ...rest }, ref) {
   return (
-    <div className={className}>
+    <div className="flex flex-col gap-1">
       {label && (
-        <label htmlFor={id} className="mb-1 block text-sm font-medium text-slate-700">
+        <label htmlFor={id} className="text-xs font-medium text-cf-muted">
           {label}
         </label>
       )}
-      <select
-        ref={ref}
-        id={id}
-        aria-invalid={error ? 'true' : undefined}
-        className={`input-base ${error ? 'border-red-400 focus:border-red-500 focus:ring-red-200' : ''}`}
-        {...rest}
-      >
-        {placeholder !== undefined && <option value="">{placeholder}</option>}
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      <div className="relative">
+        <select
+          id={id}
+          ref={ref}
+          className={`select-base pr-9 ${error ? 'border-cf-accent ring-2 ring-cf-accent/20' : ''} ${className}`}
+          {...rest}
+        >
+          {children}
+        </select>
+        <LuChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cf-muted"
+          aria-hidden="true"
+        />
+      </div>
+      {error && <p className="text-xs text-cf-accent">{error}</p>}
     </div>
   );
 });

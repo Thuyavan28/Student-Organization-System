@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { FiUserPlus, FiZap } from 'react-icons/fi';
+import { LuUserPlus, LuZap } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -51,7 +51,7 @@ export default function Register() {
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-6 flex items-center justify-center gap-2 text-2xl font-bold text-primary-700">
-          <FiZap aria-hidden="true" /> ClubFlow
+          <LuZap aria-hidden="true" /> ClubFlow
         </Link>
         <form onSubmit={submit} noValidate className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h1 className="text-xl font-semibold text-slate-900">Create your account</h1>
@@ -63,7 +63,7 @@ export default function Register() {
           <Input label="Email" type="email" autoComplete="email" value={form.email} onChange={set('email')} error={errors.email} />
           <Input label="Password" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} error={errors.password} hint="At least 8 characters" />
           <Input label="Confirm password" type="password" autoComplete="new-password" value={form.confirm} onChange={set('confirm')} error={errors.confirm} />
-          <Button type="submit" className="w-full" icon={FiUserPlus} loading={saving}>Sign up</Button>
+          <Button type="submit" className="w-full" icon={LuUserPlus} loading={saving}>Sign up</Button>
           <p className="text-center text-sm text-slate-600">
             Already registered? <Link className="font-medium text-primary-700 hover:underline" to="/login">Log in</Link>
           </p>

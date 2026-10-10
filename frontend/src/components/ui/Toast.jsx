@@ -1,29 +1,39 @@
-import { FiAlertCircle, FiCheckCircle, FiInfo, FiX } from 'react-icons/fi';
+import { LuCircleAlert, LuCircleCheck, LuInfo, LuX } from 'react-icons/lu';
+import { useToast } from '../../context/ToastContext';
 
-const STYLES = {
-  success: { icon: FiCheckCircle, classes: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  error: { icon: FiAlertCircle, classes: 'border-red-200 bg-red-50 text-red-800' },
-  info: { icon: FiInfo, classes: 'border-primary-200 bg-primary-50 text-primary-800' },
+const ICONS = {
+  success: LuCircleCheck,
+  error: LuCircleAlert,
+  info: LuInfo,
 };
 
-export default function ToastViewport({ toasts, onDismiss }) {
+const STYLES = {
+  success: 'border-cf-success/30 bg-white text-cf-success',
+  error: 'border-cf-accent/30 bg-white text-cf-accent',
+  info: 'border-cf-divider bg-white text-cf-muted',
+};
+
+export default function Toast() {
+  const { toasts, dismiss } = useToast();
+  if (!toasts?.length) return null;
   return (
-    <div
-      className="no-print pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-3 sm:items-end sm:px-6"
-      aria-live="polite"
-    >
-      {toasts.map((toast) => {
-        const { icon: Icon, classes } = STYLES[toast.type] || STYLES.info;
+    <div className="fixed bottom-24 right-4 z-50 flex flex-col gap-2 sm:bottom-4" aria-live="polite">
+      {toasts.map((t) => {
+        const Icon = ICONS[t.type] ?? LuInfo;
         return (
           <div
-            key={toast.id}
-            className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg ${classes}`}
-            role="status"
+            key={t.id}
+            className={`flex items-start gap-3 rounded-2xl border p-4 shadow-lg min-w-[280px] max-w-sm ${STYLES[t.type] ?? STYLES.info}`}
           >
-            <Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-            <p className="flex-1">{toast.message}</p>
-            <button type="button" onClick={() => onDismiss(toast.id)} aria-label="Dismiss notification">
-              <FiX className="h-4 w-4" />
+            <Icon className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
+            <p className="flex-1 text-sm font-medium text-cf-fg">{t.message}</p>
+            <button
+              type="button"
+              onClick={() => dismiss(t.id)}
+              aria-label="Dismiss"
+              className="shrink-0 rounded-lg p-0.5 hover:bg-cf-hover transition-colors"
+            >
+              <LuX className="h-3.5 w-3.5 text-cf-muted" />
             </button>
           </div>
         );

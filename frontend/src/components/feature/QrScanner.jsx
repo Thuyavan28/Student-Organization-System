@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { FiCameraOff } from 'react-icons/fi';
+import { LuCameraOff } from 'react-icons/lu';
 
 const REGION_ID = 'clubflow-qr-region';
 
@@ -36,7 +36,7 @@ export default function QrScanner({ onScan }) {
       <div id={REGION_ID} className="min-h-[18rem] w-full" />
       {error && (
         <div className="flex items-center gap-2 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">
-          <FiCameraOff className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <LuCameraOff className="h-5 w-5 shrink-0" aria-hidden="true" />
           {error}
         </div>
       )}

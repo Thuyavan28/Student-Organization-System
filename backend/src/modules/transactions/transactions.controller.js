@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { transactionsService } from './transactions.service.js';
 
@@ -7,7 +9,7 @@ export const transactionsController = {
   summary: asyncHandler(async (req, res) => res.json({ data: await transactionsService.summary(req.query) })),
   eventReport: asyncHandler(async (req, res) => res.json({ data: await transactionsService.eventReport() })),
   exportCsv: asyncHandler(async (req, res) => {
-    const csv = await transactionsService.exportCsv(req.query);
-    res.type('text/csv').attachment('clubflow-ledger.csv').send(csv);
+    res.type('text/csv').attachment('clubflow-ledger.csv');
+    await pipeline(Readable.from(transactionsService.exportCsv(req.query)), res);
   }),
 };

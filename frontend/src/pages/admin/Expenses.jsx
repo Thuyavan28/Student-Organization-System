@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiCheck, FiFileText, FiPaperclip, FiSearch, FiX } from 'react-icons/fi';
+import { LuCheck, LuFileText, LuPaperclip, LuSearch, LuX } from 'react-icons/lu';
 import { apiErrorMessage } from '../../api/axiosInstance';
 import { expensesApi } from '../../api/expenses.api';
 import ReceiptPreview from '../../components/feature/ReceiptPreview';
@@ -88,7 +88,7 @@ export default function Expenses() {
       header: 'Receipt',
       render: (row) =>
         row.receiptUrl ? (
-          <Button size="sm" variant="ghost" icon={FiPaperclip} onClick={() => setReceipt(row.receiptUrl)}>View</Button>
+          <Button size="sm" variant="ghost" icon={LuPaperclip} onClick={() => setReceipt(row.receiptUrl)}>View</Button>
         ) : (
           <span className="text-slate-400">None</span>
         ),
@@ -110,8 +110,8 @@ export default function Expenses() {
         <div className="flex justify-end gap-1">
           {row.status === 'SUBMITTED' && (
             <>
-              <Button size="sm" variant="success" icon={FiCheck} onClick={() => setReview({ expense: row, decision: 'APPROVED' })}>Approve</Button>
-              <Button size="sm" variant="secondary" icon={FiX} onClick={() => setReview({ expense: row, decision: 'REJECTED' })}>Reject</Button>
+              <Button size="sm" variant="success" icon={LuCheck} onClick={() => setReview({ expense: row, decision: 'APPROVED' })}>Approve</Button>
+              <Button size="sm" variant="secondary" icon={LuX} onClick={() => setReview({ expense: row, decision: 'REJECTED' })}>Reject</Button>
             </>
           )}
           {row.status === 'APPROVED' && (
@@ -141,9 +141,9 @@ export default function Expenses() {
               </button>
             ))}
           </div>
-          <Select aria-label="Filter by category" value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }} placeholder="All categories" options={EXPENSE_CATEGORIES.map((value) => ({ value, label: humanize(value) }))} />
+          <Select aria-label="filter by category" value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }} placeholder="All categories" options={EXPENSE_CATEGORIES.map((value) => ({ value, label: humanize(value) }))} />
           <div className="relative min-w-[12rem] flex-1">
-            <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <Input aria-label="Search claims" className="[&_input]:pl-9" placeholder="Search description or claimant" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           </div>
         </div>
@@ -151,7 +151,7 @@ export default function Expenses() {
           <ErrorState message={error} onRetry={reload} />
         ) : (
           <>
-            <Table columns={columns} rows={data} loading={loading} emptyIcon={FiFileText} emptyTitle="No claims here" emptyMessage="Claims that match this tab will be listed here." />
+            <Table columns={columns} rows={data} loading={loading} emptyIcon={LuFileText} emptyTitle="No claims here" emptyMessage="Claims that match this tab will be listed here." />
             <Pagination meta={meta} onPage={setPage} />
           </>
         )}

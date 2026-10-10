@@ -15,6 +15,7 @@ membersRouter.use(auth);
 
 // Fixed paths are registered before /:id so they are not captured as ids.
 membersRouter.get('/me', membersController.me);
+membersRouter.get('/stats', staff, membersController.stats);
 membersRouter.get('/expiring', staff, validate({ query: expiringQuery }), membersController.expiring);
 membersRouter.post('/reminders/run', requireRole('ADMIN'), membersController.runReminders);
 membersRouter.get('/', staff, validate({ query: listMembersQuery }), membersController.list);

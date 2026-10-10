@@ -1,34 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { apiErrorMessage } from '../api/axiosInstance';
 
-// Runs `request` (which resolves to { data, meta }) whenever `deps` change.
-// Responses that arrive after a newer request started are ignored.
+// Thin wrapper over useQuery so existing imports do not break.
+// request() must return { data, meta } or { data }.
 export function useFetch(request, deps = [], { enabled = true } = {}) {
-  const [state, setState] = useState({ data: null, meta: null, loading: enabled, error: null });
-  const latest = useRef(0);
-  const requestRef = useRef(request);
-  requestRef.current = request;
+  const { data: raw, isFetching, error, refetch } = useQuery({
+    // Build a stable query key from the deps array.
+    queryKey: ['useFetch', ...deps],
+    queryFn: request,
+    enabled,
+  });
 
-  const run = useCallback(async () => {
-    const id = ++latest.current;
-    setState((current) => ({ ...current, loading: true, error: null }));
-    try {
-      const body = await requestRef.current();
-      if (id === latest.current) {
-        setState({ data: body?.data ?? null, meta: body?.meta ?? null, loading: false, error: null });
-      }
-    } catch (error) {
-      if (id === latest.current) {
-        setState((current) => ({ ...current, loading: false, error: apiErrorMessage(error) }));
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (enabled) run();
-    else setState((current) => ({ ...current, loading: false }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, ...deps]);
-
-  return { ...state, reload: run };
+  return {
+    data: raw?.data ?? null,
+    meta: raw?.meta ?? null,
+    loading: isFetching,
+    error: error ? apiErrorMessage(error) : null,
+    reload: refetch,
+  };
 }

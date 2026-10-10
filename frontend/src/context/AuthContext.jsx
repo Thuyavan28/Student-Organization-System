@@ -1,8 +1,18 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useMemo, useState } from 'react';
 import { authApi } from '../api/auth.api';
 import { getToken, setToken } from '../api/axiosInstance';
 
 export const AuthContext = createContext(null);
+
+function decodeToken(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload.exp && payload.exp * 1000 < Date.now()) return null;
+    return { id: Number(payload.sub), name: payload.name, email: payload.email, role: payload.role };
+  } catch {
+    return null;
+  }
+}
 
 function normalizeUser(payload) {
   if (!payload) return null;
@@ -14,10 +24,32 @@ function normalizeUser(payload) {
   };
 }
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(Boolean(getToken()));
+// Auth state is bootstrapped from the JWT stored in localStorage without a network call.
+// The token already contains id, name, email and role (set at login), so the UI renders immediately.
+function bootstrapUser() {
+  const token = getToken();
+  if (!token) return null;
+  const claims = decodeToken(token);
+  if (!claims) {
+    setToken(null);
+    return null;
+  }
+  return { ...claims, member: null, leadership: [] };
+}
 
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(bootstrapUser);
+
+  // Called after login/register where the full user object is in the response body.
+  // No follow-up /me call needed.
+  const completeAuth = useCallback((body) => {
+    setToken(body.data.token);
+    const next = normalizeUser(body.data);
+    setUser(next);
+    return next;
+  }, []);
+
+  // Called when we need the member profile (which is not in the JWT).
   const refreshMe = useCallback(async () => {
     const body = await authApi.me();
     const next = normalizeUser(body.data);
@@ -25,24 +57,15 @@ export function AuthProvider({ children }) {
     return next;
   }, []);
 
-  useEffect(() => {
-    if (!getToken()) return;
-    refreshMe()
-      .catch(() => setToken(null))
-      .finally(() => setLoading(false));
-  }, [refreshMe]);
+  const login = useCallback(async (email, password) => {
+    const body = await authApi.login({ email, password });
+    return completeAuth(body);
+  }, [completeAuth]);
 
-  const completeAuth = useCallback(
-    async (body) => {
-      setToken(body.data.token);
-      return refreshMe();
-    },
-    [refreshMe],
-  );
-
-  const login = useCallback(async (email, password) => completeAuth(await authApi.login({ email, password })), [completeAuth]);
-
-  const register = useCallback(async (details) => completeAuth(await authApi.register(details)), [completeAuth]);
+  const register = useCallback(async (details) => {
+    const body = await authApi.register(details);
+    return completeAuth(body);
+  }, [completeAuth]);
 
   const logout = useCallback(() => {
     setToken(null);
@@ -52,7 +75,7 @@ export function AuthProvider({ children }) {
   const value = useMemo(
     () => ({
       user,
-      loading,
+      loading: false,
       isAuthenticated: Boolean(user),
       isActiveMember: Boolean(user?.member?.isActive),
       login,
@@ -61,7 +84,7 @@ export function AuthProvider({ children }) {
       refreshMe,
       hasRole: (...roles) => Boolean(user) && roles.includes(user.role),
     }),
-    [user, loading, login, register, logout, refreshMe],
+    [user, login, register, logout, refreshMe],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

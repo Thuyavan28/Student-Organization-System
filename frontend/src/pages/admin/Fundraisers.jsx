@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiHeart, FiPlus } from 'react-icons/fi';
+import { LuHeart, LuPlus } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { fundraisersApi } from '../../api/fundraisers.api';
 import FundraiserProgress from '../../components/feature/FundraiserProgress';
@@ -121,16 +121,16 @@ export default function Fundraisers() {
       <PageHeader
         title="Fundraisers"
         subtitle="Goals, progress and the work behind each campaign."
-        actions={hasRole('ADMIN') && <Button icon={FiPlus} onClick={() => setCreating(true)}>New fundraiser</Button>}
+        actions={hasRole('ADMIN') && <Button icon={LuPlus} onClick={() => setCreating(true)}>New fundraiser</Button>}
       />
       {loading && <SkeletonCards count={3} />}
       {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && data?.length === 0 && (
         <EmptyState
-          icon={FiHeart}
+          icon={LuHeart}
           title="No fundraisers yet"
           message="Create a fundraiser, split it into tasks and assign volunteers."
-          action={hasRole('ADMIN') && <Button icon={FiPlus} onClick={() => setCreating(true)}>New fundraiser</Button>}
+          action={hasRole('ADMIN') && <Button icon={LuPlus} onClick={() => setCreating(true)}>New fundraiser</Button>}
         />
       )}
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">

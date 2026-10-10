@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiPackage, FiShoppingCart, FiTrash2 } from 'react-icons/fi';
+import { LuPackage, LuShoppingCart, LuTrash2 } from 'react-icons/lu';
 import { apiErrorMessage } from '../../api/axiosInstance';
 import { ordersApi } from '../../api/orders.api';
 import { productsApi } from '../../api/products.api';
@@ -100,7 +100,7 @@ export default function Shop() {
           title="Club shop"
           subtitle="Pick a size, add to cart and pay from your phone. Members get their tier discount at checkout."
           actions={
-            <Button icon={FiShoppingCart} onClick={() => setCartOpen(true)}>
+            <Button icon={LuShoppingCart} onClick={() => setCartOpen(true)}>
               Cart ({itemCount})
             </Button>
           }
@@ -108,7 +108,7 @@ export default function Shop() {
         {loading && <SkeletonCards count={6} />}
         {error && <ErrorState message={error} onRetry={reload} />}
         {!loading && !error && products?.length === 0 && (
-          <EmptyState icon={FiPackage} title="The shop is empty" message="New merchandise will show up here." />
+          <EmptyState icon={LuPackage} title="The shop is empty" message="New merchandise will show up here." />
         )}
         {products?.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -137,7 +137,7 @@ export default function Shop() {
         }
       >
         {cart.length === 0 ? (
-          <EmptyState icon={FiShoppingCart} title="Your cart is empty" message="Choose a size on any product to add it." />
+          <EmptyState icon={LuShoppingCart} title="Your cart is empty" message="Choose a size on any product to add it." />
         ) : (
           <div className="space-y-4">
             <ul className="divide-y divide-slate-100">
@@ -157,7 +157,7 @@ export default function Shop() {
                       onClick={() => removeLine(line.variantId)}
                       aria-label={`Remove ${line.name}`}
                     >
-                      <FiTrash2 className="h-4 w-4" />
+                      <LuTrash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </li>

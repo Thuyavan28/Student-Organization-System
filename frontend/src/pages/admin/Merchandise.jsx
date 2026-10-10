@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiEdit2, FiPackage, FiPlus, FiSave } from 'react-icons/fi';
+import { LuPencil, LuPackage, LuPlus, LuSave } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { productsApi } from '../../api/products.api';
 import { sortVariants } from '../../components/feature/SizeSelector';
@@ -52,7 +52,7 @@ function StockRow({ product, variant, onSaved }) {
             value={value}
             onChange={(event) => setValue(event.target.value)}
           />
-          <Button size="sm" variant="secondary" icon={FiSave} disabled={!changed || invalid} loading={saving} onClick={save}>Save</Button>
+          <Button size="sm" variant="secondary" icon={LuSave} disabled={!changed || invalid} loading={saving} onClick={save}>Save</Button>
         </div>
       </td>
     </tr>
@@ -156,16 +156,16 @@ export default function Merchandise() {
       <PageHeader
         title="Merchandise"
         subtitle="Products, sizes and stock. Stock drops automatically when an order is placed."
-        actions={<Button icon={FiPlus} onClick={() => setFormState({ product: null })}>New product</Button>}
+        actions={<Button icon={LuPlus} onClick={() => setFormState({ product: null })}>New product</Button>}
       />
       {loading && <SkeletonCards count={3} />}
       {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && data?.length === 0 && (
         <EmptyState
-          icon={FiPackage}
+          icon={LuPackage}
           title="No products yet"
           message="Add a hoodie or T-shirt to start taking orders."
-          action={<Button icon={FiPlus} onClick={() => setFormState({ product: null })}>New product</Button>}
+          action={<Button icon={LuPlus} onClick={() => setFormState({ product: null })}>New product</Button>}
         />
       )}
       <div className="grid gap-5 lg:grid-cols-2">
@@ -179,7 +179,7 @@ export default function Merchandise() {
               actions={
                 <>
                   {product.isActive === false && <Badge tone="gray">Hidden</Badge>}
-                  <Button size="sm" variant="ghost" icon={FiEdit2} onClick={() => setFormState({ product })} aria-label={`Edit ${product.name}`} />
+                  <Button size="sm" variant="ghost" icon={LuPencil} onClick={() => setFormState({ product })} aria-label={`Edit ${product.name}`} />
                 </>
               }
             >

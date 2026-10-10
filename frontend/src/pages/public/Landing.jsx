@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FiArrowRight, FiBell, FiCalendar, FiCheckSquare, FiDollarSign, FiHeart, FiShoppingBag, FiUsers } from 'react-icons/fi';
+import { LuArrowRight, LuBell, LuCalendar, LuSquareCheck, LuDollarSign, LuHeart, LuShoppingBag, LuUsers } from 'react-icons/lu';
 import { eventsApi } from '../../api/events.api';
 import EventCard from '../../components/feature/EventCard';
 import Button from '../../components/ui/Button';
@@ -11,13 +11,13 @@ import { homeFor } from '../../utils/constants';
 import PublicNavbar from '../../components/layout/PublicNavbar';
 
 const FEATURES = [
-  { icon: FiUsers, title: 'Membership', text: 'Join online, see your tier, expiry and perks, and renew before it lapses.' },
-  { icon: FiCalendar, title: 'Events and tickets', text: 'Member and non-member prices, a hard seat limit and QR tickets on your phone.' },
-  { icon: FiCheckSquare, title: 'Instant check-in', text: 'Volunteers scan the QR at the door and see at once if the guest is an active member.' },
-  { icon: FiBell, title: 'Announcements', text: 'Post once, reach every member, and keep a permanent record of what was said.' },
-  { icon: FiShoppingBag, title: 'Merchandise', text: 'Pick a size, order from your phone and never oversell: stock is tracked per size.' },
-  { icon: FiHeart, title: 'Fundraisers', text: 'Split work into tasks, assign volunteers and watch progress toward the goal.' },
-  { icon: FiDollarSign, title: 'Transparent money', text: 'Every payment and reimbursed expense lands in one ledger the treasurer can trust.' },
+  { icon: LuUsers, title: 'Membership', text: 'Join online, see your tier, expiry and perks, and renew before it lapses.' },
+  { icon: LuCalendar, title: 'Events and tickets', text: 'Member and non-member prices, a hard seat limit and QR tickets on your phone.' },
+  { icon: LuSquareCheck, title: 'Instant check-in', text: 'Volunteers scan the QR at the door and see at once if the guest is an active member.' },
+  { icon: LuBell, title: 'Announcements', text: 'Post once, reach every member, and keep a permanent record of what was said.' },
+  { icon: LuShoppingBag, title: 'Merchandise', text: 'Pick a size, order from your phone and never oversell: stock is tracked per size.' },
+  { icon: LuHeart, title: 'Fundraisers', text: 'Split work into tasks, assign volunteers and watch progress toward the goal.' },
+  { icon: LuDollarSign, title: 'Transparent money', text: 'Every payment and reimbursed expense lands in one ledger the treasurer can trust.' },
 ];
 
 export default function Landing() {
@@ -66,13 +66,13 @@ export default function Landing() {
           <div className="mb-6 flex items-end justify-between">
             <h2 className="text-2xl font-bold text-slate-900">Upcoming events</h2>
             <Link to="/events" className="inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:underline">
-              All events <FiArrowRight aria-hidden="true" />
+              All events <LuArrowRight aria-hidden="true" />
             </Link>
           </div>
           {events.loading && <SkeletonCards />}
           {events.error && <ErrorState message={events.error} onRetry={events.reload} />}
           {!events.loading && !events.error && events.data?.length === 0 && (
-            <EmptyState icon={FiCalendar} title="No upcoming events" message="Check back soon for the next event." />
+            <EmptyState icon={LuCalendar} title="No upcoming events" message="Check back soon for the next event." />
           )}
           {events.data?.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

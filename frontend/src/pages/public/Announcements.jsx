@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiBell } from 'react-icons/fi';
+import { LuBell } from 'react-icons/lu';
 import { announcementsApi } from '../../api/announcements.api';
 import AnnouncementCard from '../../components/feature/AnnouncementCard';
 import PublicNavbar from '../../components/layout/PublicNavbar';
@@ -32,7 +32,7 @@ export default function Announcements() {
         )}
         {error && <ErrorState message={error} onRetry={reload} />}
         {!loading && !error && data?.length === 0 && (
-          <EmptyState icon={FiBell} title="No announcements yet" message="New posts from the committee will appear here." />
+          <EmptyState icon={LuBell} title="No announcements yet" message="New posts from the committee will appear here." />
         )}
         {!loading && data?.length > 0 && (
           <>

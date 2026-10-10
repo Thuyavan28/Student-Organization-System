@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiCalendar, FiEdit2, FiList, FiPlus, FiSearch, FiSend } from 'react-icons/fi';
+import { LuCalendar, LuPencil, LuList, LuPlus, LuSearch, LuSend } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { eventsApi } from '../../api/events.api';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
-import Card, { PageHeader } from '../../components/ui/Card';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import { ErrorState } from '../../components/ui/EmptyState';
+import DataCard from '../../components/ui/DataCard';
+import EmptyState from '../../components/ui/EmptyState';
+import ErrorState from '../../components/ui/ErrorState';
+import FilterCard, { FilterField } from '../../components/ui/FilterCard';
 import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
+import PageHeader from '../../components/ui/PageHeader';
 import Pagination from '../../components/ui/Pagination';
 import Select from '../../components/ui/Select';
-import Table from '../../components/ui/Table';
+import { Table, Thead, Th, Tbody, Tr, Td } from '../../components/ui/Table';
 import { useToast } from '../../context/ToastContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useFetch } from '../../hooks/useFetch';
@@ -56,7 +59,7 @@ function validate(form) {
   if (toPaise(form.memberPrice) < 0 || form.memberPrice === '') errors.memberPrice = 'Enter a price (0 for free)';
   if (toPaise(form.nonMemberPrice) < 0 || form.nonMemberPrice === '') errors.nonMemberPrice = 'Enter a price (0 for free)';
   const times = ['startAt', 'endAt', 'bookingOpensAt', 'bookingClosesAt'].map((key) => new Date(form[key]).getTime());
-  if (times.some(Number.isNaN)) errors.startAt = 'Fill in every date and time';
+  if (times.some(Number.isNaN)) errors.startAt = 'fill in every date and time';
   else {
     const [start, end, opens, closes] = times;
     if (end <= start) errors.endAt = 'End must be after the start';
@@ -195,10 +198,10 @@ export default function Events() {
       render: (row) => (
         <div className="flex flex-wrap justify-end gap-1">
           <Link to={`/admin/events/${row.id}/bookings`}>
-            <Button size="sm" variant="secondary" icon={FiList}>Bookings</Button>
+            <Button size="sm" variant="secondary" icon={LuList}>Bookings</Button>
           </Link>
           {row.status === 'DRAFT' && (
-            <Button size="sm" icon={FiSend} onClick={() => setAction({ kind: 'publish', event: row, verb: 'published' })}>Publish</Button>
+            <Button size="sm" icon={LuSend} onClick={() => setAction({ kind: 'publish', event: row, verb: 'published' })}>Publish</Button>
           )}
           {row.status === 'PUBLISHED' && (
             <>
@@ -207,7 +210,7 @@ export default function Events() {
             </>
           )}
           {row.status !== 'COMPLETED' && row.status !== 'CANCELLED' && (
-            <Button size="sm" variant="ghost" icon={FiEdit2} aria-label={`Edit ${row.title}`} onClick={() => setFormState({ event: row })} />
+            <Button size="sm" variant="ghost" icon={LuPencil} aria-label={`Edit ${row.title}`} onClick={() => setFormState({ event: row })} />
           )}
         </div>
       ),
@@ -219,16 +222,16 @@ export default function Events() {
       <PageHeader
         title="Events"
         subtitle="Create, publish and manage club events."
-        actions={<Button icon={FiPlus} onClick={() => setFormState({ event: null })}>Create event</Button>}
+        actions={<Button icon={LuPlus} onClick={() => setFormState({ event: null })}>Create event</Button>}
       />
       <Card padded={false}>
         <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
           <div className="relative min-w-[12rem] flex-1">
-            <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <Input aria-label="Search events" className="[&_input]:pl-9" placeholder="Search events" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           </div>
           <Select
-            aria-label="Filter by status"
+            aria-label="filter by status"
             value={status}
             onChange={(e) => { setStatus(e.target.value); setPage(1); }}
             placeholder="All statuses"
@@ -243,10 +246,10 @@ export default function Events() {
               columns={columns}
               rows={data}
               loading={loading}
-              emptyIcon={FiCalendar}
+              emptyIcon={LuCalendar}
               emptyTitle="No events yet"
               emptyMessage="Create the first event to start selling tickets."
-              emptyAction={<Button icon={FiPlus} onClick={() => setFormState({ event: null })}>Create event</Button>}
+              emptyAction={<Button icon={LuPlus} onClick={() => setFormState({ event: null })}>Create event</Button>}
             />
             <Pagination meta={meta} onPage={setPage} />
           </>

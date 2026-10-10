@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiAward, FiUserCheck } from 'react-icons/fi';
+import { LuAward, LuUserCheck } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { membershipsApi } from '../../api/memberships.api';
 import MembershipCard from '../../components/feature/MembershipCard';
@@ -173,7 +173,7 @@ export default function MyProfile() {
                 <ul className="space-y-2 text-sm">
                   {positions.map((item) => (
                     <li key={item.id} className="flex items-center gap-2">
-                      <FiAward className="text-primary-600" aria-hidden="true" /> {humanize(item.position)} until {formatDate(item.termEnd)}
+                      <LuAward className="text-primary-600" aria-hidden="true" /> {humanize(item.position)} until {formatDate(item.termEnd)}
                     </li>
                   ))}
                 </ul>
@@ -181,7 +181,7 @@ export default function MyProfile() {
             )}
             <Card>
               <p className="flex items-center gap-2 text-sm text-slate-600">
-                <FiUserCheck className="text-primary-600" aria-hidden="true" />
+                <LuUserCheck className="text-primary-600" aria-hidden="true" />
                 Show your QR ticket at the door. Volunteers see your membership status when they scan it.
                 <Link className="font-medium text-primary-700 hover:underline" to="/me/tickets">My tickets</Link>
               </p>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { FiArrowLeft, FiCalendar, FiCheckCircle, FiClock, FiMapPin, FiUsers } from 'react-icons/fi';
+import { LuArrowLeft, LuCalendar, LuCircleCheck, LuClock, LuMapPin, LuUsers } from 'react-icons/lu';
 import { apiErrorMessage } from '../../api/axiosInstance';
 import { bookingsApi } from '../../api/bookings.api';
 import { eventsApi } from '../../api/events.api';
@@ -83,7 +83,7 @@ export default function EventDetail() {
       <PublicNavbar />
       <main className="mx-auto max-w-5xl px-4 py-8">
         <Link to="/events" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
-          <FiArrowLeft aria-hidden="true" /> All events
+          <LuArrowLeft aria-hidden="true" /> All events
         </Link>
         <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
           <div className="space-y-4">
@@ -95,10 +95,10 @@ export default function EventDetail() {
             </div>
             <h1 className="text-3xl font-bold text-slate-900">{event.title}</h1>
             <ul className="space-y-2 text-slate-600">
-              <li className="flex items-center gap-2"><FiCalendar aria-hidden="true" /> {formatDateTime(event.startAt)}</li>
-              <li className="flex items-center gap-2"><FiClock aria-hidden="true" /> Ends {formatDateTime(event.endAt)}</li>
-              <li className="flex items-center gap-2"><FiMapPin aria-hidden="true" /> {event.venue}</li>
-              <li className="flex items-center gap-2"><FiUsers aria-hidden="true" /> {booked} of {event.capacity} seats booked</li>
+              <li className="flex items-center gap-2"><LuCalendar aria-hidden="true" /> {formatDateTime(event.startAt)}</li>
+              <li className="flex items-center gap-2"><LuClock aria-hidden="true" /> Ends {formatDateTime(event.endAt)}</li>
+              <li className="flex items-center gap-2"><LuMapPin aria-hidden="true" /> {event.venue}</li>
+              <li className="flex items-center gap-2"><LuUsers aria-hidden="true" /> {booked} of {event.capacity} seats booked</li>
             </ul>
             <p className="whitespace-pre-line leading-relaxed text-slate-700">{event.description}</p>
           </div>
@@ -129,7 +129,7 @@ export default function EventDetail() {
             )}
             {isMemberPrice && (
               <p className="mt-3 flex items-center gap-2 text-sm text-emerald-700">
-                <FiCheckCircle aria-hidden="true" /> Member price applied
+                <LuCircleCheck aria-hidden="true" /> Member price applied
               </p>
             )}
 

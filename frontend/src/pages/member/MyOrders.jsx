@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiShoppingBag } from 'react-icons/fi';
+import { LuShoppingBag } from 'react-icons/lu';
 import { ordersApi } from '../../api/orders.api';
 import PaymentDisclaimer from '../../components/feature/PaymentDisclaimer';
 import Badge from '../../components/ui/Badge';
@@ -31,7 +31,7 @@ export default function MyOrders() {
       {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && data?.length === 0 && (
         <EmptyState
-          icon={FiShoppingBag}
+          icon={LuShoppingBag}
           title="No orders yet"
           message="Your merchandise orders will show up here."
           action={<Link to="/shop"><Button>Visit the shop</Button></Link>}

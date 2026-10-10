@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiFileText } from 'react-icons/fi';
+import { LuFileText } from 'react-icons/lu';
 import { API_ORIGIN } from '../../api/axiosInstance';
 import Modal from '../ui/Modal';
 
@@ -17,7 +17,7 @@ export default function ReceiptPreview({ receiptUrl, onClose }) {
     <Modal open={Boolean(receiptUrl)} title="Receipt" onClose={onClose} size="lg">
       {failed ? (
         <div className="flex flex-col items-center gap-2 py-10 text-center text-slate-500">
-          <FiFileText className="h-8 w-8" aria-hidden="true" />
+          <LuFileText className="h-8 w-8" aria-hidden="true" />
           <p className="text-sm">This receipt file is not available. Demo records may reference files that were never uploaded.</p>
         </div>
       ) : isPdf ? (

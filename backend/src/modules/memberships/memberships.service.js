@@ -1,4 +1,5 @@
 import { prisma } from '../../config/prisma.js';
+import * as cache from '../../utils/memoryCache.js';
 import { conflict, notFound } from '../../utils/apiError.js';
 
 function addMonths(date, months) {
@@ -51,6 +52,14 @@ async function recordDuesPayment(tx, member, tier, actorId) {
   });
 }
 
+const TIERS_TTL_SECONDS = 300;
+
+function invalidateMembership() {
+  cache.delByPrefix('members:');
+  cache.delByPrefix('dashboard:');
+  cache.delByPrefix('finance:');
+}
+
 function withActiveFlag(member) {
   return { ...member, isActive: isActiveMember(member) };
 }
@@ -60,16 +69,21 @@ export const membershipsService = {
   getActiveTierForUser,
   recordDuesPayment,
 
+  // Tiers change rarely and are read on many screens, so they are cached for five minutes.
   listTiers() {
-    return prisma.membershipTier.findMany({ orderBy: { duesAmount: 'asc' } });
+    return cache.wrap('tiers:all', TIERS_TTL_SECONDS, () => prisma.membershipTier.findMany({ orderBy: { duesAmount: 'asc' } }));
   },
 
-  createTier(body) {
-    return prisma.membershipTier.create({ data: { ...body, durationMonths: 12 } });
+  async createTier(body) {
+    const tier = await prisma.membershipTier.create({ data: { ...body, durationMonths: 12 } });
+    cache.delByPrefix('tiers:');
+    return tier;
   },
 
-  updateTier(id, body) {
-    return prisma.membershipTier.update({ where: { id }, data: body });
+  async updateTier(id, body) {
+    const tier = await prisma.membershipTier.update({ where: { id }, data: body });
+    cache.delByPrefix('tiers:');
+    return tier;
   },
 
   async join(userId, { tierId, studentId, department, year, phone }) {
@@ -82,6 +96,7 @@ export const membershipsService = {
       });
       return recordDuesPayment(tx, created, tier, userId);
     });
+    invalidateMembership();
     return withActiveFlag(member);
   },
 
@@ -92,6 +107,7 @@ export const membershipsService = {
       const tier = await findTier(tx, tierId ?? current.tierId);
       return recordDuesPayment(tx, current, tier, actorId);
     });
+    invalidateMembership();
     return withActiveFlag(member);
   },
 

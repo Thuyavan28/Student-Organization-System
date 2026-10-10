@@ -1,4 +1,4 @@
-import { FiBookmark } from 'react-icons/fi';
+import { LuBookmark } from 'react-icons/lu';
 import { formatDateTime } from '../../utils/formatDate';
 import Badge from '../ui/Badge';
 
@@ -10,7 +10,7 @@ export default function AnnouncementCard({ announcement }) {
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {announcement.isPinned && (
           <Badge tone="blue">
-            <FiBookmark className="mr-1 h-3 w-3" aria-hidden="true" /> Pinned
+            <LuBookmark className="mr-1 h-3 w-3" aria-hidden="true" /> Pinned
           </Badge>
         )}
         <Badge tone="gray">{announcement.audience === 'ALL_USERS' ? 'Everyone' : 'Members'}</Badge>

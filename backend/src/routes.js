@@ -21,10 +21,14 @@ import { leadershipRouter } from './modules/leadership/leadership.routes.js';
 
 export const apiRouter = Router();
 
-apiRouter.get('/health', asyncHandler(async (req, res) => {
+// Liveness check: no database work, so it answers instantly even when the database is slow or asleep.
+apiRouter.get('/health', (req, res) => res.json({ data: { status: 'ok', time: new Date().toISOString() } }));
+
+apiRouter.get('/health/db', asyncHandler(async (req, res) => {
+  const startedAt = performance.now();
   // Constant connectivity probe; there is no model to query for this.
   await prisma.$queryRaw`SELECT 1`;
-  res.json({ data: { status: 'ok', db: 'up', time: new Date().toISOString() } });
+  res.json({ data: { status: 'ok', db: 'up', dbMs: Math.round(performance.now() - startedAt), time: new Date().toISOString() } });
 }));
 
 apiRouter.use('/auth', authRouter);

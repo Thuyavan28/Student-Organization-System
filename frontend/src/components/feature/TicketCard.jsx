@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FiCalendar, FiMapPin } from 'react-icons/fi';
+import { LuCalendar, LuMapPin } from 'react-icons/lu';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDateTime, isPast } from '../../utils/formatDate';
 import Badge from '../ui/Badge';
@@ -27,10 +27,10 @@ export default function TicketCard({ booking, onCancel }) {
           {event && (
             <ul className="space-y-1 text-sm text-slate-600">
               <li className="flex items-center gap-2">
-                <FiCalendar aria-hidden="true" /> {formatDateTime(event.startAt)}
+                <LuCalendar aria-hidden="true" /> {formatDateTime(event.startAt)}
               </li>
               <li className="flex items-center gap-2">
-                <FiMapPin aria-hidden="true" /> {event.venue}
+                <LuMapPin aria-hidden="true" /> {event.venue}
               </li>
             </ul>
           )}

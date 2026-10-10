@@ -1,4 +1,4 @@
-import { FiAlertTriangle, FiCalendar, FiUser } from 'react-icons/fi';
+import { LuTriangleAlert, LuCalendar, LuUser } from 'react-icons/lu';
 import { TASK_STATUSES, humanize } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
 import Badge from '../ui/Badge';
@@ -22,16 +22,16 @@ export default function TaskCard({ task, onStatusChange, onEdit, canChangeStatus
         <h4 className="text-sm font-medium text-slate-900">{task.title}</h4>
         {overdue && (
           <Badge tone="red">
-            <FiAlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" /> Overdue
+            <LuTriangleAlert className="mr-1 h-3 w-3" aria-hidden="true" /> Overdue
           </Badge>
         )}
       </div>
       <ul className="mt-2 space-y-1 text-xs text-slate-600">
         <li className="flex items-center gap-1.5">
-          <FiUser aria-hidden="true" /> {task.assignee?.name ?? 'Unassigned'}
+          <LuUser aria-hidden="true" /> {task.assignee?.name ?? 'Unassigned'}
         </li>
         <li className="flex items-center gap-1.5">
-          <FiCalendar aria-hidden="true" /> {task.dueDate ? `Due ${formatDate(task.dueDate)}` : 'No due date'}
+          <LuCalendar aria-hidden="true" /> {task.dueDate ? `Due ${formatDate(task.dueDate)}` : 'No due date'}
         </li>
       </ul>
       <div className="mt-3 flex items-center gap-2">

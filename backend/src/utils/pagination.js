@@ -1,14 +1,15 @@
 import { z } from 'zod';
 
-export const MAX_PAGE_SIZE = 100;
+export const DEFAULT_PAGE_SIZE = 15;
+export const MAX_PAGE_SIZE = 50;
 
+// Oversized page sizes are rejected with a 400 by the schema, so list endpoints stay bounded.
 export const paginationShape = {
   page: z.coerce.number().int().min(1).optional(),
-  pageSize: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).optional(),
 };
 
-// Oversized page sizes are clamped rather than rejected so large lists stay bounded.
-export function parsePagination(query = {}, defaultSize = 20) {
+export function parsePagination(query = {}, defaultSize = DEFAULT_PAGE_SIZE) {
   const page = Math.max(1, Number(query.page) || 1);
   const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(query.pageSize) || defaultSize));
   return { page, pageSize, skip: (page - 1) * pageSize, take: pageSize };

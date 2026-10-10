@@ -26,7 +26,7 @@ const Merchandise = lazy(() => import('../pages/admin/Merchandise'));
 const Orders = lazy(() => import('../pages/admin/Orders'));
 const Fundraisers = lazy(() => import('../pages/admin/Fundraisers'));
 const FundraiserDetail = lazy(() => import('../pages/admin/FundraiserDetail'));
-const Finance = lazy(() => import('../pages/admin/Finance'));
+const Finance = lazy(() => import('../pages/admin/finance'));
 const Expenses = lazy(() => import('../pages/admin/Expenses'));
 const Leadership = lazy(() => import('../pages/admin/Leadership'));
 const Settings = lazy(() => import('../pages/admin/Settings'));

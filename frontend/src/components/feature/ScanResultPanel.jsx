@@ -1,12 +1,12 @@
-import { FiAlertTriangle, FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import { LuTriangleAlert, LuCircleCheck, LuCircleX } from 'react-icons/lu';
 import { formatDateTime } from '../../utils/formatDate';
 
 const VARIANTS = {
-  VALID: { icon: FiCheckCircle, bg: 'bg-emerald-600', title: 'Checked in', note: 'Valid ticket' },
-  ALREADY_USED: { icon: FiXCircle, bg: 'bg-red-600', title: 'Already checked in', note: 'This ticket was scanned before' },
-  WRONG_EVENT: { icon: FiAlertTriangle, bg: 'bg-amber-600', title: 'Wrong event', note: 'This ticket is for a different event' },
-  INVALID: { icon: FiXCircle, bg: 'bg-red-600', title: 'Invalid ticket', note: 'No ticket matches this code' },
-  CANCELLED: { icon: FiXCircle, bg: 'bg-red-600', title: 'Ticket cancelled', note: 'This booking was cancelled' },
+  VALID: { icon: LuCircleCheck, bg: 'bg-emerald-600', title: 'Checked in', note: 'Valid ticket' },
+  ALREADY_USED: { icon: LuCircleX, bg: 'bg-red-600', title: 'Already checked in', note: 'This ticket was scanned before' },
+  WRONG_EVENT: { icon: LuTriangleAlert, bg: 'bg-amber-600', title: 'Wrong event', note: 'This ticket is for a different event' },
+  INVALID: { icon: LuCircleX, bg: 'bg-red-600', title: 'Invalid ticket', note: 'No ticket matches this code' },
+  CANCELLED: { icon: LuCircleX, bg: 'bg-red-600', title: 'Ticket cancelled', note: 'This booking was cancelled' },
 };
 
 export default function ScanResultPanel({ result, onDismiss }) {
@@ -39,7 +39,7 @@ export default function ScanResultPanel({ result, onDismiss }) {
       )}
 
       {result.result === 'ALREADY_USED' && result.checkedInAt && (
-        <p className="mt-4 text-lg">First scanned at {formatDateTime(result.checkedInAt)}</p>
+        <p className="mt-4 text-lg">first scanned at {formatDateTime(result.checkedInAt)}</p>
       )}
       {result.counter && (
         <p className="mt-6 text-sm text-white/80">

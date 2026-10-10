@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { FiDownload, FiPrinter } from 'react-icons/fi';
+import { LuDownload, LuPrinter } from 'react-icons/lu';
 import Button from '../ui/Button';
 
 // The QR encodes only the opaque ticket token; it carries no personal data.
@@ -22,10 +22,10 @@ export default function QrTicket({ token, fileName = 'clubflow-ticket', dimmed =
         <QRCodeCanvas ref={canvasRef} value={token} size={200} level="M" marginSize={1} />
       </div>
       <div className="no-print flex gap-2">
-        <Button size="sm" variant="secondary" icon={FiDownload} onClick={download}>
+        <Button size="sm" variant="secondary" icon={LuDownload} onClick={download}>
           Download
         </Button>
-        <Button size="sm" variant="secondary" icon={FiPrinter} onClick={() => window.print()}>
+        <Button size="sm" variant="secondary" icon={LuPrinter} onClick={() => window.print()}>
           Print
         </Button>
       </div>

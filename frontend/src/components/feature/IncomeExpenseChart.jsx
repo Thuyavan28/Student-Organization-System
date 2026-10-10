@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { FiBarChart2, FiTable } from 'react-icons/fi';
+import { LuChartColumn, LuTable } from 'react-icons/lu';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatMonth } from '../../utils/formatDate';
 import Button from '../ui/Button';
@@ -44,7 +44,7 @@ export default function IncomeExpenseChart({ data }) {
         <Button
           size="sm"
           variant="ghost"
-          icon={showTable ? FiBarChart2 : FiTable}
+          icon={showTable ? LuChartColumn : LuTable}
           onClick={() => setShowTable((value) => !value)}
         >
           {showTable ? 'Show chart' : 'View as table'}

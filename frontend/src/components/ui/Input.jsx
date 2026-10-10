@@ -1,29 +1,21 @@
-import { forwardRef, useId } from 'react';
+import { forwardRef } from 'react';
 
-const Input = forwardRef(function Input(
-  { label, error, hint, as: Component = 'input', className = '', ...rest },
-  ref,
-) {
-  const id = useId();
+const Input = forwardRef(function Input({ label, id, error, helpText, className = '', ...rest }, ref) {
   return (
-    <div className={className}>
+    <div className="flex flex-col gap-1">
       {label && (
-        <label htmlFor={id} className="mb-1 block text-sm font-medium text-slate-700">
+        <label htmlFor={id} className="text-xs font-medium text-cf-muted">
           {label}
         </label>
       )}
-      <Component
-        ref={ref}
+      <input
         id={id}
-        aria-invalid={error ? 'true' : undefined}
-        className={`input-base ${error ? 'border-red-400 focus:border-red-500 focus:ring-red-200' : ''}`}
+        ref={ref}
+        className={`input-base ${error ? 'border-cf-accent ring-2 ring-cf-accent/20' : ''} ${className}`}
         {...rest}
       />
-      {error ? (
-        <p className="mt-1 text-xs text-red-600">{error}</p>
-      ) : (
-        hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>
-      )}
+      {error && <p className="text-xs text-cf-accent">{error}</p>}
+      {!error && helpText && <p className="text-xs text-cf-muted">{helpText}</p>}
     </div>
   );
 });

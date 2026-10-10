@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { FiArrowLeft, FiCheckCircle, FiDollarSign, FiSearch, FiTag, FiUserX } from 'react-icons/fi';
+import { LuArrowLeft, LuCircleCheck, LuDollarSign, LuSearch, LuTag, LuUserX } from 'react-icons/lu';
 import { eventsApi } from '../../api/events.api';
 import Badge from '../../components/ui/Badge';
 import Card, { PageHeader } from '../../components/ui/Card';
@@ -76,7 +76,7 @@ export default function EventBookings() {
   return (
     <>
       <Link to="/admin/events" className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
-        <FiArrowLeft aria-hidden="true" /> All events
+        <LuArrowLeft aria-hidden="true" /> All events
       </Link>
       <PageHeader
         title={event.data?.title ?? 'Event bookings'}
@@ -88,28 +88,28 @@ export default function EventBookings() {
       {stats.loading && !s && <SkeletonStats count={4} />}
       {s && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Registrations" value={`${s.registrations} / ${s.capacity}`} hint={`${s.seatsRemaining} seats remaining`} icon={FiTag} />
-          <StatCard label="Checked in" value={s.checkIns} hint={s.attendanceRate != null ? `${Math.round(s.attendanceRate * 100)}% attendance` : 'Event not finished'} icon={FiCheckCircle} tone="green" />
-          <StatCard label="No-shows" value={s.noShows ?? '-'} hint={s.noShows == null ? 'Known after the event' : undefined} icon={FiUserX} tone="amber" />
-          <StatCard label="Net result" value={formatCurrency(s.net)} hint={`${formatCurrency(s.revenue)} revenue, ${formatCurrency(s.expenses)} costs`} icon={FiDollarSign} tone={s.net >= 0 ? 'primary' : 'red'} />
+          <StatCard label="Registrations" value={`${s.registrations} / ${s.capacity}`} hint={`${s.seatsRemaining} seats remaining`} icon={LuTag} />
+          <StatCard label="Checked in" value={s.checkIns} hint={s.attendanceRate != null ? `${Math.round(s.attendanceRate * 100)}% attendance` : 'Event not finished'} icon={LuCircleCheck} tone="green" />
+          <StatCard label="No-shows" value={s.noShows ?? '-'} hint={s.noShows == null ? 'Known after the event' : undefined} icon={LuUserX} tone="amber" />
+          <StatCard label="Net result" value={formatCurrency(s.net)} hint={`${formatCurrency(s.revenue)} revenue, ${formatCurrency(s.expenses)} costs`} icon={LuDollarSign} tone={s.net >= 0 ? 'primary' : 'red'} />
         </div>
       )}
 
       <Card className="mt-6" title="Bookings" padded={false}>
         <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
           <div className="relative min-w-[12rem] flex-1">
-            <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <Input aria-label="Search attendees" className="[&_input]:pl-9" placeholder="Search name or email" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           </div>
           <Select
-            aria-label="Filter by booking status"
+            aria-label="filter by booking status"
             value={status}
             onChange={(e) => { setStatus(e.target.value); setPage(1); }}
             placeholder="All bookings"
             options={[{ value: 'CONFIRMED', label: 'Confirmed' }, { value: 'CANCELLED', label: 'Cancelled' }]}
           />
           <Select
-            aria-label="Filter by check-in"
+            aria-label="filter by check-in"
             value={checkedIn}
             onChange={(e) => { setCheckedIn(e.target.value); setPage(1); }}
             placeholder="Any check-in state"
@@ -124,7 +124,7 @@ export default function EventBookings() {
               columns={columns}
               rows={bookings.data}
               loading={bookings.loading}
-              emptyIcon={FiTag}
+              emptyIcon={LuTag}
               emptyTitle="No bookings found"
               emptyMessage="Bookings for this event will appear here."
             />

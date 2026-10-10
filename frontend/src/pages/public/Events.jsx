@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiCalendar, FiSearch } from 'react-icons/fi';
+import { LuCalendar, LuSearch } from 'react-icons/lu';
 import { eventsApi } from '../../api/events.api';
 import EventCard from '../../components/feature/EventCard';
 import PublicNavbar from '../../components/layout/PublicNavbar';
@@ -55,7 +55,7 @@ export default function Events() {
             ))}
           </div>
           <div className="relative w-full sm:w-72">
-            <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <Input
               aria-label="Search events"
               className="[&_input]:pl-9"
@@ -69,7 +69,7 @@ export default function Events() {
         {loading && <SkeletonCards count={6} />}
         {error && <ErrorState message={error} onRetry={reload} />}
         {!loading && !error && data?.length === 0 && (
-          <EmptyState icon={FiCalendar} title="No events found" message="Try a different search or tab." />
+          <EmptyState icon={LuCalendar} title="No events found" message="Try a different search or tab." />
         )}
         {!loading && data?.length > 0 && (
           <>

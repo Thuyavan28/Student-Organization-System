@@ -1,16 +1,73 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens — monochrome palette per spec section 7.1 */
+:root {
+  --color-bg: #ffffff;
+  --color-fg: #09090b;
+  --color-muted: #52525b;
+  --color-subtle: #f4f4f5;
+  --color-skeleton: #e4e4e7;
+  --color-hover: #f4f4f5;
+  --color-border: #09090b;
+  --color-divider: #e4e4e7;
+  --color-accent: #dc2626;
+  --color-warning: #ea580c;
+  --color-success: #16a34a;
+  --color-pending: #d97706;
+}
+
 @layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-display: swap;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-800 antialiased;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    min-height: 100vh;
+  }
+
+  /* Respect reduced-motion preference for skeleton animations */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-pulse {
+      animation: none;
+    }
   }
 }
 
 @layer components {
+  /* Standard input: 1px black border, 48px height, rounded-xl */
   .input-base {
-    @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:bg-slate-100 disabled:text-slate-500;
+    @apply block w-full rounded-xl border border-[#09090b] bg-white px-3 py-3 text-sm text-[#09090b]
+      placeholder:text-[#52525b] focus:outline-none focus:ring-2 focus:ring-[#09090b] focus:ring-offset-1
+      disabled:bg-[#f4f4f5] disabled:text-[#52525b] disabled:cursor-not-allowed;
+    min-height: 48px;
+  }
+
+  .select-base {
+    @apply block w-full rounded-xl border border-[#09090b] bg-white px-3 py-3 text-sm text-[#09090b]
+      focus:outline-none focus:ring-2 focus:ring-[#09090b] focus:ring-offset-1
+      disabled:bg-[#f4f4f5] disabled:cursor-not-allowed appearance-none;
+    min-height: 48px;
+  }
+
+  /* Skeleton block with soft pulse */
+  .skeleton {
+    @apply rounded-md bg-[#e4e4e7] animate-pulse;
   }
 }
 

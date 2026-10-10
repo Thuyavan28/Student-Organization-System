@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FiCalendar, FiMapPin, FiUsers } from 'react-icons/fi';
+import { LuCalendar, LuMapPin, LuUsers } from 'react-icons/lu';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDateTime } from '../../utils/formatDate';
 import Badge from '../ui/Badge';
@@ -30,13 +30,13 @@ export default function EventCard({ event }) {
         </div>
         <ul className="space-y-1 text-sm text-slate-600">
           <li className="flex items-center gap-2">
-            <FiCalendar aria-hidden="true" /> {formatDateTime(event.startAt)}
+            <LuCalendar aria-hidden="true" /> {formatDateTime(event.startAt)}
           </li>
           <li className="flex items-center gap-2">
-            <FiMapPin aria-hidden="true" /> {event.venue}
+            <LuMapPin aria-hidden="true" /> {event.venue}
           </li>
           <li className="flex items-center gap-2">
-            <FiUsers aria-hidden="true" /> {booked} of {event.capacity} booked
+            <LuUsers aria-hidden="true" /> {booked} of {event.capacity} booked
           </li>
         </ul>
         <div className="h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">

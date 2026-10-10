@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiUploadCloud } from 'react-icons/fi';
+import { LuCloudUpload } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { expensesApi } from '../../api/expenses.api';
 import { eventsApi } from '../../api/events.api';
@@ -131,7 +131,7 @@ export default function ExpenseForm({ onSubmitted }) {
           htmlFor="receipt-file"
           className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 hover:border-primary-400"
         >
-          <FiUploadCloud className="h-5 w-5 text-primary-600" aria-hidden="true" />
+          <LuCloudUpload className="h-5 w-5 text-primary-600" aria-hidden="true" />
           {receipt ? receipt.name : 'Choose a JPG, PNG, WEBP or PDF up to 5 MB'}
         </label>
         <input

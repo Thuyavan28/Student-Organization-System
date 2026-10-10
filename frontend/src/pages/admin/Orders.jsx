@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiCheck, FiSearch, FiShoppingBag, FiXCircle } from 'react-icons/fi';
+import { LuCheck, LuSearch, LuShoppingBag, LuCircleX } from 'react-icons/lu';
 import { apiErrorMessage } from '../../api/axiosInstance';
 import { ordersApi } from '../../api/orders.api';
 import { itemLabel } from '../member/MyOrders';
@@ -85,9 +85,9 @@ export default function Orders() {
             row.status === 'PAID' || row.status === 'PLACED' ? (
               <div className="flex justify-end gap-1">
                 {row.status === 'PAID' && (
-                  <Button size="sm" variant="secondary" icon={FiCheck} onClick={() => setPending({ order: row, status: 'FULFILLED' })}>Fulfil</Button>
+                  <Button size="sm" variant="secondary" icon={LuCheck} onClick={() => setPending({ order: row, status: 'FULFILLED' })}>Fulfill</Button>
                 )}
-                <Button size="sm" variant="ghost" icon={FiXCircle} onClick={() => setPending({ order: row, status: 'CANCELLED' })}>Cancel</Button>
+                <Button size="sm" variant="ghost" icon={LuCircleX} onClick={() => setPending({ order: row, status: 'CANCELLED' })}>Cancel</Button>
               </div>
             ) : null,
         }]
@@ -100,11 +100,11 @@ export default function Orders() {
       <Card padded={false}>
         <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
           <div className="relative min-w-[12rem] flex-1">
-            <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <LuSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <Input aria-label="Search orders" className="[&_input]:pl-9" placeholder="Search buyer name or email" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           </div>
           <Select
-            aria-label="Filter by status"
+            aria-label="filter by status"
             value={status}
             onChange={(e) => { setStatus(e.target.value); setPage(1); }}
             placeholder="All statuses"
@@ -115,7 +115,7 @@ export default function Orders() {
           <ErrorState message={error} onRetry={reload} />
         ) : (
           <>
-            <Table columns={columns} rows={data} loading={loading} emptyIcon={FiShoppingBag} emptyTitle="No orders found" emptyMessage="Orders placed in the shop will appear here." />
+            <Table columns={columns} rows={data} loading={loading} emptyIcon={LuShoppingBag} emptyTitle="No orders found" emptyMessage="Orders placed in the shop will appear here." />
             <Pagination meta={meta} onPage={setPage} />
           </>
         )}

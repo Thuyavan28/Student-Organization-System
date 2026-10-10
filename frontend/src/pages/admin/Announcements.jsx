@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiArchive, FiBell, FiBookmark, FiSend } from 'react-icons/fi';
+import { LuArchive, LuBell, LuBookmark, LuSend } from 'react-icons/lu';
 import { announcementsApi } from '../../api/announcements.api';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import Badge from '../../components/ui/Badge';
@@ -84,7 +84,7 @@ export default function Announcements() {
         <div className="max-w-xs">
           <p className="flex items-center gap-2 font-medium text-slate-900">
             {row.title}
-            {row.isPinned && <FiBookmark className="text-primary-600" aria-label="Pinned" />}
+            {row.isPinned && <LuBookmark className="text-primary-600" aria-label="Pinned" />}
           </p>
           <p className="line-clamp-2 text-xs text-slate-500">{row.body}</p>
         </div>
@@ -117,8 +117,8 @@ export default function Announcements() {
       render: (row) =>
         row.archivedAt ? null : (
           <div className="flex justify-end gap-1">
-            <Button size="sm" variant="ghost" icon={FiBookmark} onClick={() => togglePin(row)}>{row.isPinned ? 'Unpin' : 'Pin'}</Button>
-            <Button size="sm" variant="ghost" icon={FiArchive} onClick={() => setToArchive(row)}>Archive</Button>
+            <Button size="sm" variant="ghost" icon={LuBookmark} onClick={() => togglePin(row)}>{row.isPinned ? 'Unpin' : 'Pin'}</Button>
+            <Button size="sm" variant="ghost" icon={LuArchive} onClick={() => setToArchive(row)}>Archive</Button>
           </div>
         ),
     },
@@ -145,7 +145,7 @@ export default function Announcements() {
               <input type="checkbox" checked={form.isPinned} onChange={(event) => setForm((current) => ({ ...current, isPinned: event.target.checked }))} />
               Pin to the top of the feed
             </label>
-            <Button type="submit" icon={FiSend} loading={posting}>Publish and email</Button>
+            <Button type="submit" icon={LuSend} loading={posting}>Publish and email</Button>
           </form>
         </Card>
 
@@ -158,7 +158,7 @@ export default function Announcements() {
                 columns={columns}
                 rows={history.data}
                 loading={history.loading}
-                emptyIcon={FiBell}
+                emptyIcon={LuBell}
                 emptyTitle="Nothing posted yet"
                 emptyMessage="Your first announcement will be listed here with its send date and recipient count."
               />

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiTag } from 'react-icons/fi';
+import { LuTag } from 'react-icons/lu';
 import { apiErrorMessage } from '../../api/axiosInstance';
 import { bookingsApi } from '../../api/bookings.api';
 import TicketCard from '../../components/feature/TicketCard';
@@ -41,7 +41,7 @@ export default function MyTickets() {
       {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && data?.length === 0 && (
         <EmptyState
-          icon={FiTag}
+          icon={LuTag}
           title="No tickets yet"
           message="Book a ticket for an upcoming event and it will show up here."
           action={<Link to="/events"><Button>Browse events</Button></Link>}

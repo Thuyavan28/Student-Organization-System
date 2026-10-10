@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FiCheckSquare, FiKey } from 'react-icons/fi';
+import { LuSquareCheck, LuKey } from 'react-icons/lu';
 import { apiErrorMessage } from '../../api/axiosInstance';
 import { checkinsApi } from '../../api/checkins.api';
 import { eventsApi } from '../../api/events.api';
@@ -89,7 +89,7 @@ export default function CheckIn() {
   if (events.loading) return <Skeleton className="mx-auto h-96 w-full max-w-md" />;
   if (events.error) return <ErrorState message={events.error} onRetry={events.reload} />;
   if (!events.data?.length) {
-    return <EmptyState icon={FiCheckSquare} title="No published events" message="Check-in is available once an event is published." />;
+    return <EmptyState icon={LuSquareCheck} title="No published events" message="Check-in is available once an event is published." />;
   }
 
   return (
@@ -127,7 +127,7 @@ export default function CheckIn() {
             value={manualToken}
             onChange={(event) => setManualToken(event.target.value)}
           />
-          <Button type="submit" icon={FiKey} disabled={!manualToken.trim()}>Check</Button>
+          <Button type="submit" icon={LuKey} disabled={!manualToken.trim()}>Check</Button>
         </form>
       </Card>
 

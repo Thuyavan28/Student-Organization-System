@@ -1,134 +1,165 @@
-import { Link } from 'react-router-dom';
-import { FiAlertTriangle, FiCalendar, FiClipboard, FiDollarSign, FiTag, FiTrendingDown, FiTrendingUp, FiUsers } from 'react-icons/fi';
-import { dashboardApi } from '../../api/dashboard.api';
-import IncomeExpenseChart from '../../components/feature/IncomeExpenseChart';
-import Badge from '../../components/ui/Badge';
-import Card, { PageHeader } from '../../components/ui/Card';
-import EmptyState, { ErrorState } from '../../components/ui/EmptyState';
-import { SkeletonStats } from '../../components/ui/Skeleton';
+import { Suspense } from 'react';
+import { LuUsers, LuCalendar, LuDollarSign, LuTicket } from 'react-icons/lu';
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
+import { useDashboardCharts, useDashboardSummary } from '../../hooks/queries/dashboard.queries';
+import ErrorState from '../../components/ui/ErrorState';
 import StatCard from '../../components/ui/StatCard';
-import { useFetch } from '../../hooks/useFetch';
+import PageHeader from '../../components/ui/PageHeader';
+import DataCard, { DataCardBody } from '../../components/ui/DataCard';
+import Badge from '../../components/ui/Badge';
+import StatCardSkeleton from '../../components/ui/skeletons/StatCardSkeleton';
+import ChartSkeleton from '../../components/ui/skeletons/ChartSkeleton';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { daysUntil, formatDate, formatDateTime } from '../../utils/formatDate';
+import { formatDate } from '../../utils/formatDate';
 
-function MiniList({ items, empty, render }) {
-  if (!items?.length) return <p className="py-4 text-center text-sm text-slate-500">{empty}</p>;
-  return <ul className="divide-y divide-slate-100 text-sm">{items.map(render)}</ul>;
+function MonthlyChart({ data = [] }) {
+  const fmt = (v) => `Rs ${(v / 100).toLocaleString()}`;
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <defs>
+          <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#09090b" stopOpacity={0.15} />
+            <stop offset="100%" stopColor="#09090b" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#dc2626" stopOpacity={0.15} />
+            <stop offset="100%" stopColor="#dc2626" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+        <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#52525b' }} tickLine={false} axisLine={false} />
+        <YAxis tickFormatter={(v) => `${(v / 100 / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: '#52525b' }} tickLine={false} axisLine={false} width={36} />
+        <Tooltip formatter={(v) => fmt(v)} contentStyle={{ borderRadius: 12, border: '1px solid #e4e4e7', fontSize: 12 }} />
+        <Area type="monotone" dataKey="income" stroke="#09090b" strokeWidth={2} fill="url(#incomeGrad)" name="Income" dot={false} />
+        <Area type="monotone" dataKey="expense" stroke="#dc2626" strokeWidth={2} fill="url(#expenseGrad)" name="Expense" dot={false} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
 }
 
-export default function Dashboard() {
-  const { data, loading, error, reload } = useFetch(() => dashboardApi.summary(), []);
+function StatsSection() {
+  const { data: raw, isLoading, error, refetch } = useDashboardSummary();
+  const d = raw?.data;
 
-  if (error) return <ErrorState message={error} onRetry={reload} />;
-  if (loading || !data) {
-    return (
-      <>
-        <PageHeader title="Dashboard" />
-        <SkeletonStats count={8} />
-      </>
-    );
-  }
-
-  const { members, finance, openTasks } = data;
-  const openTaskCount = (openTasks?.PENDING ?? 0) + (openTasks?.IN_PROGRESS ?? 0);
+  if (isLoading) return <StatCardSkeleton count={4} />;
+  if (error) return <ErrorState error={error.message} onRetry={refetch} />;
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle="Live numbers from the club database." />
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Members" value={members.total} hint={`${members.active} active`} icon={FiUsers} />
-        <StatCard
-          label="Expiring within 30 days"
-          value={members.expiringSoon}
-          icon={FiAlertTriangle}
-          tone={members.expiringSoon > 0 ? 'amber' : 'green'}
-        />
-        <StatCard label="Tickets sold" value={data.ticketsSold} icon={FiTag} />
-        <StatCard label="Open tasks" value={openTaskCount} hint={`${openTasks?.IN_PROGRESS ?? 0} in progress`} icon={FiClipboard} />
-        <StatCard label="Income" value={formatCurrency(finance.income)} icon={FiTrendingUp} tone="green" />
-        <StatCard label="Expenses" value={formatCurrency(finance.expense)} icon={FiTrendingDown} tone="red" />
-        <StatCard label="Balance" value={formatCurrency(finance.balance)} icon={FiDollarSign} tone={finance.balance >= 0 ? 'primary' : 'red'} />
-        <StatCard label="Upcoming events" value={data.upcomingEvents?.length ?? 0} icon={FiCalendar} />
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+        <StatCard label="Total members" value={d?.members?.total} icon={LuUsers} />
+        <StatCard label="Active members" value={d?.members?.active} icon={LuUsers} tone="success" />
+        <StatCard label="Tickets sold" value={d?.ticketsSold} icon={LuTicket} />
+        <StatCard label="Balance" value={formatCurrency(d?.finance?.balance)} icon={LuDollarSign} tone={d?.finance?.balance >= 0 ? 'success' : 'danger'} />
       </div>
 
-      <Card className="mt-6" title="Income and expense by month" subtitle="Last months from the ledger">
-        <IncomeExpenseChart data={data.monthly} />
-      </Card>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Card title="Upcoming events" actions={<Link className="text-sm font-medium text-primary-700 hover:underline" to="/admin/events">Manage</Link>}>
-          <MiniList
-            items={data.upcomingEvents}
-            empty="No upcoming events."
-            render={(event) => (
-              <li key={event.id} className="flex items-center justify-between gap-3 py-2.5">
-                <div>
-                  <Link className="font-medium text-slate-900 hover:text-primary-700" to={`/admin/events/${event.id}/bookings`}>{event.title}</Link>
-                  <p className="text-xs text-slate-500">{formatDateTime(event.startAt)}</p>
-                </div>
-                <Badge tone={event.seatsRemaining <= 5 ? 'amber' : 'blue'}>
-                  {event.bookedCount ?? event.capacity - event.seatsRemaining} / {event.capacity}
-                </Badge>
-              </li>
-            )}
-          />
-        </Card>
-
-        <Card title="Expiring memberships" actions={<Link className="text-sm font-medium text-primary-700 hover:underline" to="/admin/members">View all</Link>}>
-          <MiniList
-            items={data.expiringMembers}
-            empty="No memberships are expiring soon."
-            render={(member) => {
-              const days = daysUntil(member.expiresAt);
-              return (
-                <li key={member.id} className="flex items-center justify-between gap-3 py-2.5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
+        {/* Upcoming events */}
+        <DataCard title="Upcoming events">
+          {(!d?.upcomingEvents?.length) ? (
+            <DataCardBody><p className="text-xs text-cf-muted">No upcoming events.</p></DataCardBody>
+          ) : (
+            <ul className="divide-y divide-cf-divider">
+              {d.upcomingEvents.map((e) => (
+                <li key={e.id} className="flex items-center justify-between px-6 py-3 gap-3">
                   <div>
-                    <p className="font-medium text-slate-900">{member.user?.name ?? member.name}</p>
-                    <p className="text-xs text-slate-500">Expires {formatDate(member.expiresAt)}</p>
+                    <p className="text-sm font-medium text-cf-fg truncate">{e.title}</p>
+                    <p className="text-xs text-cf-muted">{formatDate(e.startAt)}</p>
                   </div>
-                  <Badge tone={days <= 7 ? 'red' : 'amber'}>{days} days</Badge>
+                  <span className="text-xs text-cf-muted shrink-0">
+                    {e.seatsRemaining} left
+                  </span>
                 </li>
-              );
-            }}
-          />
-        </Card>
+              ))}
+            </ul>
+          )}
+        </DataCard>
 
-        <Card title="Recent registrations">
-          <MiniList
-            items={data.recentRegistrations}
-            empty="No recent registrations."
-            render={(item) => (
-              <li key={item.id} className="flex items-center justify-between gap-3 py-2.5">
-                <div>
-                  <p className="font-medium text-slate-900">{item.user?.name ?? item.name}</p>
-                  <p className="text-xs text-slate-500">{item.event?.title ?? item.studentId ?? item.user?.email}</p>
-                </div>
-                <span className="text-xs text-slate-500">{formatDate(item.createdAt ?? item.joinedAt)}</span>
-              </li>
-            )}
-          />
-        </Card>
-
-        <Card title="Low stock" actions={<Link className="text-sm font-medium text-primary-700 hover:underline" to="/admin/merchandise">Restock</Link>}>
-          <MiniList
-            items={data.lowStock}
-            empty="All variants are well stocked."
-            render={(variant) => (
-              <li key={variant.id} className="flex items-center justify-between gap-3 py-2.5">
-                <span className="font-medium text-slate-900">
-                  {variant.product?.name ?? variant.productName} ({variant.size === 'ONE_SIZE' ? 'One size' : variant.size})
-                </span>
-                <Badge tone={variant.stock === 0 ? 'red' : 'amber'}>{variant.stock === 0 ? 'Out of stock' : `${variant.stock} left`}</Badge>
-              </li>
-            )}
-          />
-        </Card>
+        {/* Expiring memberships */}
+        <DataCard title="Expiring soon">
+          {(!d?.expiringMembers?.length) ? (
+            <DataCardBody><p className="text-xs text-cf-muted">No memberships expiring in 30 days.</p></DataCardBody>
+          ) : (
+            <ul className="divide-y divide-cf-divider">
+              {d.expiringMembers.map((m) => (
+                <li key={m.id} className="flex items-center justify-between px-6 py-3 gap-3">
+                  <p className="text-sm font-medium text-cf-fg">{m.user?.name}</p>
+                  <span className="text-xs text-cf-muted shrink-0">{formatDate(m.expiresAt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DataCard>
       </div>
 
-      {!data.upcomingEvents?.length && !data.monthly?.length && (
-        <EmptyState icon={FiCalendar} title="Nothing to show yet" message="Create an event or record income to see activity here." />
-      )}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Recent registrations */}
+        <DataCard title="Recent registrations">
+          {(!d?.recentRegistrations?.length) ? (
+            <DataCardBody><p className="text-xs text-cf-muted">No recent registrations.</p></DataCardBody>
+          ) : (
+            <ul className="divide-y divide-cf-divider">
+              {d.recentRegistrations.map((b) => (
+                <li key={b.id} className="flex items-center justify-between px-6 py-3 gap-3">
+                  <p className="text-sm font-medium text-cf-fg">{b.user?.name}</p>
+                  <p className="text-xs text-cf-muted truncate">{b.event?.title}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DataCard>
+
+        {/* Low stock */}
+        <DataCard title="Low stock">
+          {(!d?.lowStock?.length) ? (
+            <DataCardBody><p className="text-xs text-cf-muted">All products are well stocked.</p></DataCardBody>
+          ) : (
+            <ul className="divide-y divide-cf-divider">
+              {d.lowStock.map((v) => (
+                <li key={v.id} className="flex items-center justify-between px-6 py-3 gap-3">
+                  <p className="text-sm font-medium text-cf-fg">{v.product?.name} - {v.size}</p>
+                  <Badge tone={v.stock === 0 ? 'red' : 'amber'}>{v.stock} left</Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DataCard>
+      </div>
     </>
+  );
+}
+
+function ChartsSection() {
+  const { data: raw, isLoading, error, refetch } = useDashboardCharts();
+  const d = raw?.data;
+
+  if (isLoading) return <ChartSkeleton height={300} />;
+  if (error) return <ErrorState error={error.message} onRetry={refetch} title="Charts unavailable" />;
+
+  return (
+    <DataCard title="Income vs Expense (last 6 months)" className="mt-6">
+      <DataCardBody>
+        <MonthlyChart data={d?.monthly} />
+      </DataCardBody>
+    </DataCard>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <div>
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your club's performance"
+      />
+      <StatsSection />
+      {/* Charts load independently so stat cards are never blocked by heavy aggregates */}
+      <Suspense fallback={<ChartSkeleton height={300} />}>
+        <ChartsSection />
+      </Suspense>
+    </div>
   );
 }

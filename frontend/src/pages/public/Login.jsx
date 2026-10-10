@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { FiLogIn, FiZap } from 'react-icons/fi';
+import { LuLogIn, LuZap } from 'react-icons/lu';
 import { apiErrorMessage } from '../../api/axiosInstance';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -57,7 +57,7 @@ export default function Login() {
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-6 flex items-center justify-center gap-2 text-2xl font-bold text-primary-700">
-          <FiZap aria-hidden="true" /> ClubFlow
+          <LuZap aria-hidden="true" /> ClubFlow
         </Link>
         <form onSubmit={submit} noValidate className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h1 className="text-xl font-semibold text-slate-900">Log in</h1>
@@ -66,7 +66,7 @@ export default function Login() {
           )}
           <Input label="Email" type="email" autoComplete="email" value={form.email} onChange={set('email')} error={errors.email} />
           <Input label="Password" type="password" autoComplete="current-password" value={form.password} onChange={set('password')} error={errors.password} />
-          <Button type="submit" className="w-full" icon={FiLogIn} loading={saving}>Log in</Button>
+          <Button type="submit" className="w-full" icon={LuLogIn} loading={saving}>Log in</Button>
           <p className="text-center text-sm text-slate-600">
             New here? <Link className="font-medium text-primary-700 hover:underline" to="/register">Create an account</Link>
           </p>

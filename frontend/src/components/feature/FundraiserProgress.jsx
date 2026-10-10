@@ -1,4 +1,4 @@
-import { FiAlertTriangle, FiCheckCircle } from 'react-icons/fi';
+import { LuTriangleAlert, LuCircleCheck } from 'react-icons/lu';
 import { formatCurrency } from '../../utils/formatCurrency';
 import Badge from '../ui/Badge';
 
@@ -38,11 +38,11 @@ export default function FundraiserProgress({ summary, compact = false }) {
         </div>
         {onTrack ? (
           <Badge tone="green">
-            <FiCheckCircle className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> On track
+            <LuCircleCheck className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> On track
           </Badge>
         ) : (
           <Badge tone="amber">
-            <FiAlertTriangle className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Behind schedule
+            <LuTriangleAlert className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Behind schedule
           </Badge>
         )}
       </div>

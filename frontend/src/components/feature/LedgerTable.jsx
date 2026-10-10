@@ -1,4 +1,4 @@
-import { FiArrowDownLeft, FiArrowUpRight } from 'react-icons/fi';
+import { LuArrowDownLeft, LuArrowUpRight } from 'react-icons/lu';
 import { humanize } from '../../utils/constants';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
@@ -26,9 +26,9 @@ export default function LedgerTable({ rows, meta, loading, sort, onSort, onPage 
       render: (row) => (
         <span className="inline-flex items-center gap-1 text-slate-700">
           {row.type === 'INCOME' ? (
-            <FiArrowDownLeft className="h-4 w-4 text-emerald-700" aria-hidden="true" />
+            <LuArrowDownLeft className="h-4 w-4 text-emerald-700" aria-hidden="true" />
           ) : (
-            <FiArrowUpRight className="h-4 w-4 text-red-700" aria-hidden="true" />
+            <LuArrowUpRight className="h-4 w-4 text-red-700" aria-hidden="true" />
           )}
           {humanize(row.type)}
         </span>

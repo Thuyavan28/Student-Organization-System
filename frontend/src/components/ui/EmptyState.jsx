@@ -1,32 +1,16 @@
-import { FiAlertTriangle, FiInbox } from 'react-icons/fi';
-import Button from './Button';
+import { LuInbox } from 'react-icons/lu';
+// Named re-export so existing pages can do: import { ErrorState } from './EmptyState'
+export { default as ErrorState } from './ErrorState';
 
-export default function EmptyState({ icon: Icon = FiInbox, title, message, action }) {
+export default function EmptyState({ icon: Icon = LuInbox, title, message, action }) {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-      <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-50 text-primary-600">
-        <Icon className="h-6 w-6" aria-hidden="true" />
-      </span>
-      <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-      {message && <p className="mt-1 max-w-sm text-sm text-slate-500">{message}</p>}
-      {action && <div className="mt-4">{action}</div>}
-    </div>
-  );
-}
-
-export function ErrorState({ message = 'Something went wrong while loading this page.', onRetry }) {
-  return (
-    <div className="flex flex-col items-center justify-center px-4 py-12 text-center" role="alert">
-      <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
-        <FiAlertTriangle className="h-6 w-6" aria-hidden="true" />
-      </span>
-      <h3 className="text-base font-semibold text-slate-900">Could not load data</h3>
-      <p className="mt-1 max-w-sm text-sm text-slate-500">{message}</p>
-      {onRetry && (
-        <Button className="mt-4" variant="secondary" onClick={onRetry}>
-          Try again
-        </Button>
-      )}
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-cf-divider bg-white px-6 py-16 text-center">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cf-subtle">
+        <Icon className="h-6 w-6 text-cf-muted" aria-hidden="true" />
+      </div>
+      {title && <h3 className="mb-1 text-sm font-semibold text-cf-fg">{title}</h3>}
+      {message && <p className="mb-6 max-w-xs text-xs text-cf-muted">{message}</p>}
+      {action && <div>{action}</div>}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { membersService } from './members.service.js';
 export const membersController = {
   list: asyncHandler(async (req, res) => res.json(await membersService.list(req.query))),
   expiring: asyncHandler(async (req, res) => res.json(await membersService.expiring(req.query))),
+  stats: asyncHandler(async (req, res) => res.json({ data: await membersService.stats() })),
   me: asyncHandler(async (req, res) => res.json({ data: await membersService.me(req.user.id) })),
   get: asyncHandler(async (req, res) => res.json({ data: await membersService.get(req.params.id) })),
   create: asyncHandler(async (req, res) => res.status(201).json({ data: await membersService.create(req.body, req.user) })),

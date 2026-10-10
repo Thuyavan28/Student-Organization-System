@@ -1,280 +1,257 @@
-import { useMemo, useState } from 'react';
-import { FiDownload, FiPlus, FiPieChart, FiTrendingDown, FiTrendingUp, FiUsers } from 'react-icons/fi';
-import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
-import { eventsApi } from '../../api/events.api';
-import { financeApi } from '../../api/finance.api';
-import { fundraisersApi } from '../../api/fundraisers.api';
+import { useState } from 'react';
+import { LuDownload, LuDollarSign, LuPlus, LuSearch, LuTrendingUp, LuTrendingDown } from 'react-icons/lu';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { transactionsApi } from '../../api/transactions.api';
-import CategoryBreakdownChart from '../../components/feature/CategoryBreakdownChart';
-import IncomeExpenseChart, { EXPENSE_COLOR, INCOME_COLOR } from '../../components/feature/IncomeExpenseChart';
-import LedgerTable from '../../components/feature/LedgerTable';
+import { financeApi } from '../../api/finance.api';
+import { useTransactionsList, useCreateTransaction } from '../../hooks/queries/transactions.queries';
+import { useFinanceSummary } from '../../hooks/queries/finance.queries';
+import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
-import Card, { PageHeader } from '../../components/ui/Card';
-import { ErrorState } from '../../components/ui/EmptyState';
+import DataCard from '../../components/ui/DataCard';
+import EmptyState from '../../components/ui/EmptyState';
+import ErrorState from '../../components/ui/ErrorState';
+import FilterCard, { FilterField } from '../../components/ui/FilterCard';
 import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
+import PageHeader from '../../components/ui/PageHeader';
+import Pagination from '../../components/ui/Pagination';
 import Select from '../../components/ui/Select';
-import { SkeletonStats } from '../../components/ui/Skeleton';
 import StatCard from '../../components/ui/StatCard';
-import Table from '../../components/ui/Table';
+import { Table, Thead, Th, Tbody, Tr, Td } from '../../components/ui/Table';
+import Tabs from '../../components/ui/Tabs';
+import StatCardSkeleton from '../../components/ui/skeletons/StatCardSkeleton';
+import TableSkeleton from '../../components/ui/skeletons/TableSkeleton';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../hooks/useAuth';
 import { useDebounce } from '../../hooks/useDebounce';
-import { useFetch } from '../../hooks/useFetch';
-import { TXN_CATEGORIES, TXN_TYPES, humanize } from '../../utils/constants';
-import { formatCurrency, toPaise } from '../../utils/formatCurrency';
+import { TXN_TYPES, TXN_CATEGORIES, humanize } from '../../utils/constants';
+import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
 
-const MONTHS_SHOWN = 12;
-const EMPTY_FILTERS = { type: '', category: '', eventId: '', fundraiserId: '', from: '', to: '', q: '' };
-
-function ManualEntryForm({ events, fundraisers, onClose, onSaved }) {
+function AddTransactionModal({ onClose, onSaved }) {
   const toast = useToast();
-  const [form, setForm] = useState({
-    type: 'INCOME', category: 'DONATION', amount: '', description: '', eventId: '', fundraiserId: '',
-    occurredAt: new Date().toISOString().slice(0, 10),
-  });
+  const { user } = useAuth();
+  const { mutateAsync, isPending } = useCreateTransaction();
+  const [form, setForm] = useState({ type: 'INCOME', category: 'OTHER', amount: '', description: '', occurredAt: new Date().toISOString().slice(0, 10) });
   const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
-  const set = (name) => (event) => setForm((current) => ({ ...current, [name]: event.target.value }));
+  const set = (k) => (e) => setForm((c) => ({ ...c, [k]: e.target.value }));
 
-  const submit = async (event) => {
-    event.preventDefault();
+  const submit = async (e) => {
+    e.preventDefault();
     const found = {};
-    if (toPaise(form.amount) <= 0) found.amount = 'Enter an amount greater than zero';
-    if (form.description.trim().length < 3) found.description = 'Describe the entry';
+    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0) found.amount = 'Enter a valid amount';
+    if (!form.description.trim()) found.description = 'Enter a description';
     setErrors(found);
     if (Object.keys(found).length) return;
-
-    setSaving(true);
     try {
-      await transactionsApi.create({
-        type: form.type,
-        category: form.category,
-        amount: toPaise(form.amount),
-        description: form.description.trim(),
-        occurredAt: new Date(form.occurredAt).toISOString(),
-        eventId: form.eventId ? Number(form.eventId) : undefined,
-        fundraiserId: form.fundraiserId ? Number(form.fundraiserId) : undefined,
-      });
-      toast.success('Ledger entry recorded');
+      await mutateAsync({ ...form, amount: Math.round(Number(form.amount) * 100), occurredAt: new Date(form.occurredAt) });
+      toast.success('Transaction recorded');
       onSaved();
-    } catch (error) {
-      setErrors(apiFieldErrors(error));
-      toast.error(apiErrorMessage(error));
-    } finally {
-      setSaving(false);
+    } catch (err) {
+      toast.error(err?.response?.data?.message ?? 'Failed to save');
     }
   };
 
   return (
-    <Modal
-      open
-      title="Record ledger entry"
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button type="submit" form="ledger-form" loading={saving}>Record entry</Button>
-        </>
-      }
-    >
-      <form id="ledger-form" onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
-        <Select label="Type" value={form.type} onChange={set('type')} options={TXN_TYPES.map((value) => ({ value, label: humanize(value) }))} />
-        <Select label="Category" value={form.category} onChange={set('category')} options={TXN_CATEGORIES.map((value) => ({ value, label: humanize(value) }))} />
-        <Input label="Amount (Rs)" type="number" min="0" step="0.01" value={form.amount} onChange={set('amount')} error={errors.amount} />
-        <Input label="Date" type="date" value={form.occurredAt} onChange={set('occurredAt')} error={errors.occurredAt} />
-        <Input className="sm:col-span-2" label="Description" value={form.description} onChange={set('description')} error={errors.description} />
-        <Select label="Event (optional)" value={form.eventId} onChange={set('eventId')} placeholder="None" options={(events ?? []).map((item) => ({ value: item.id, label: item.title }))} />
-        <Select label="Fundraiser (optional)" value={form.fundraiserId} onChange={set('fundraiserId')} placeholder="None" options={(fundraisers ?? []).map((item) => ({ value: item.id, label: item.title }))} />
+    <Modal open onClose={onClose} title="Record transaction" size="md">
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <Select id="txn-type" label="Type" value={form.type} onChange={set('type')}>
+          {TXN_TYPES.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}
+        </Select>
+        <Select id="txn-cat" label="Category" value={form.category} onChange={set('category')}>
+          {TXN_CATEGORIES.map((c) => <option key={c} value={c}>{humanize(c)}</option>)}
+        </Select>
+        <Input id="txn-amt" label="Amount (Rs)" type="number" min="0.01" step="0.01" value={form.amount} onChange={set('amount')} error={errors.amount} placeholder="0.00" />
+        <Input id="txn-desc" label="Description" value={form.description} onChange={set('description')} error={errors.description} />
+        <Input id="txn-date" label="Date" type="date" value={form.occurredAt} onChange={set('occurredAt')} />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="secondary" size="sm" type="button" onClick={onClose}>Cancel</Button>
+          <Button type="submit" size="sm" loading={isPending}>Record</Button>
+        </div>
       </form>
     </Modal>
   );
 }
 
-function categoryData(rows, type) {
-  return rows
-    .filter((row) => row.type === type)
-    .map((row) => ({ name: humanize(row.category), value: row.amount }))
-    .sort((a, b) => b.value - a.value);
-}
-
 export default function Finance() {
-  const toast = useToast();
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [sort, setSort] = useState({ key: 'occurredAt', order: 'desc' });
+  const { user } = useAuth();
+  const [tab, setTab] = useState('ledger');
+  const [q, setQ] = useState('');
+  const [type, setType] = useState('');
+  const [category, setCategory] = useState('');
   const [page, setPage] = useState(1);
-  const [entryOpen, setEntryOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const q = useDebounce(filters.q);
+  const dq = useDebounce(q, 350);
+  const toast = useToast();
 
-  const params = useMemo(
-    () => ({
-      type: filters.type || undefined,
-      category: filters.category || undefined,
-      eventId: filters.eventId || undefined,
-      fundraiserId: filters.fundraiserId || undefined,
-      from: filters.from ? new Date(filters.from).toISOString() : undefined,
-      to: filters.to ? new Date(`${filters.to}T23:59:59`).toISOString() : undefined,
-      q: q || undefined,
-    }),
-    [filters.type, filters.category, filters.eventId, filters.fundraiserId, filters.from, filters.to, q],
-  );
-  const paramKey = JSON.stringify(params);
+  const params = { q: dq || undefined, type: type || undefined, category: category || undefined, page, limit: 20, sort: 'occurredAt', order: 'desc' };
+  const { data: listData, isLoading, error, refetch } = useTransactionsList(params);
+  const { data: summaryData, isLoading: sumLoading } = useFinanceSummary();
 
-  const events = useFetch(() => eventsApi.list({ pageSize: 100 }), []);
-  const fundraisers = useFetch(() => fundraisersApi.list({ pageSize: 100 }), []);
-  const summary = useFetch(() => financeApi.summary({ from: params.from, to: params.to }), [params.from, params.to]);
-  const ledger = useFetch(
-    () => transactionsApi.list({ ...params, sort: sort.key, order: sort.order, page, pageSize: 15 }),
-    [paramKey, sort.key, sort.order, page],
-  );
-  const report = useFetch(() => financeApi.eventReport(), []);
+  const rows = listData?.data ?? [];
+  const meta = listData?.meta ?? null;
+  const summary = summaryData?.data;
 
-  const setFilter = (name) => (event) => {
-    setFilters((current) => ({ ...current, [name]: event.target.value }));
-    setPage(1);
-  };
+  const isAdmin = ['ADMIN', 'TREASURER'].includes(user?.role);
 
-  const toggleSort = (key) => {
-    setSort((current) => ({ key, order: current.key === key && current.order === 'desc' ? 'asc' : 'desc' }));
-    setPage(1);
-  };
-
-  const exportCsv = async () => {
+  const handleExport = async () => {
     setExporting(true);
     try {
-      const blob = await financeApi.exportCsv(params);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `clubflow-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
-      link.click();
+      const res = await transactionsApi.exportCsv(params);
+      const url = URL.createObjectURL(new Blob([res], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ledger-${Date.now()}.csv`;
+      a.click();
       URL.revokeObjectURL(url);
-    } catch (error) {
-      toast.error(apiErrorMessage(error));
+    } catch {
+      toast.error('Export failed');
     } finally {
       setExporting(false);
     }
   };
 
-  const s = summary.data;
-  const sumOf = (category) => (s?.byCategory ?? []).filter((row) => row.category === category && row.type === 'INCOME').reduce((total, row) => total + row.amount, 0);
-  const reportRows = (report.data ?? []).filter((row) => row.registrations > 0 || row.revenue > 0);
-
-  const reportColumns = [
-    { key: 'title', header: 'Event', render: (row) => <span className="font-medium text-slate-900">{row.title}</span> },
-    { key: 'startAt', header: 'Date', render: (row) => formatDate(row.startAt) },
-    { key: 'registrations', header: 'Registered', className: 'tabular-nums' },
-    { key: 'checkIns', header: 'Attended', className: 'tabular-nums' },
-    { key: 'attendanceRate', header: 'Attendance', className: 'tabular-nums', render: (row) => (row.attendanceRate == null ? '-' : `${Math.round(row.attendanceRate * 100)}%`) },
-    { key: 'revenue', header: 'Revenue', className: 'tabular-nums', render: (row) => formatCurrency(row.revenue) },
-    { key: 'expenses', header: 'Costs', className: 'tabular-nums', render: (row) => formatCurrency(row.expenses) },
-    { key: 'net', header: 'Net', className: 'tabular-nums font-medium', render: (row) => formatCurrency(row.net) },
+  const TABS = [
+    { id: 'ledger', label: 'Ledger' },
+    { id: 'summary', label: 'Summary' },
   ];
 
   return (
-    <>
+    <div>
       <PageHeader
         title="Finance"
-        subtitle="Every figure on this page is computed from the ledger."
+        description="Income, expenses, and ledger"
         actions={
-          <>
-            <Button variant="secondary" icon={FiDownload} loading={exporting} onClick={exportCsv}>Export CSV</Button>
-            <Button icon={FiPlus} onClick={() => setEntryOpen(true)}>Record entry</Button>
-          </>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" icon={LuDownload} onClick={handleExport} loading={exporting}>
+              Export CSV
+            </Button>
+            {isAdmin && (
+              <Button size="sm" icon={LuPlus} onClick={() => setAddOpen(true)}>
+                Record transaction
+              </Button>
+            )}
+          </div>
         }
       />
 
-      <Card className="mb-6" title="Filters">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Select aria-label="Type" value={filters.type} onChange={setFilter('type')} placeholder="Income and expense" options={TXN_TYPES.map((value) => ({ value, label: humanize(value) }))} />
-          <Select aria-label="Category" value={filters.category} onChange={setFilter('category')} placeholder="All categories" options={TXN_CATEGORIES.map((value) => ({ value, label: humanize(value) }))} />
-          <Select aria-label="Event" value={filters.eventId} onChange={setFilter('eventId')} placeholder="All events" options={(events.data ?? []).map((item) => ({ value: item.id, label: item.title }))} />
-          <Select aria-label="Fundraiser" value={filters.fundraiserId} onChange={setFilter('fundraiserId')} placeholder="All fundraisers" options={(fundraisers.data ?? []).map((item) => ({ value: item.id, label: item.title }))} />
-          <Input aria-label="From date" type="date" value={filters.from} onChange={setFilter('from')} />
-          <Input aria-label="To date" type="date" value={filters.to} onChange={setFilter('to')} />
-          <Input aria-label="Search description" className="lg:col-span-1" placeholder="Search description" value={filters.q} onChange={setFilter('q')} />
-          <Button variant="ghost" onClick={() => { setFilters(EMPTY_FILTERS); setPage(1); }}>Clear filters</Button>
+      {/* Summary stat cards */}
+      {sumLoading ? (
+        <StatCardSkeleton count={3} />
+      ) : (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-6">
+          <StatCard label="Total income" value={formatCurrency(summary?.income)} icon={LuTrendingUp} tone="success" />
+          <StatCard label="Total expense" value={formatCurrency(summary?.expense)} icon={LuTrendingDown} tone="danger" />
+          <StatCard label="Net balance" value={formatCurrency(summary?.net)} icon={LuDollarSign} tone={summary?.net >= 0 ? 'success' : 'danger'} />
         </div>
-      </Card>
+      )}
 
-      {summary.error && <ErrorState message={summary.error} onRetry={summary.reload} />}
-      {summary.loading && !s && <SkeletonStats count={4} />}
-      {s && (
+      <Tabs tabs={TABS} active={tab} onChange={setTab} />
+
+      {tab === 'ledger' && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Income" value={formatCurrency(s.income)} icon={FiTrendingUp} tone="green" />
-            <StatCard label="Expenses" value={formatCurrency(s.expense)} icon={FiTrendingDown} tone="red" />
-            <StatCard label="Balance left" value={formatCurrency(s.net)} icon={FiPieChart} tone={s.net >= 0 ? 'primary' : 'red'} />
-            <StatCard label="Dues collected" value={formatCurrency(sumOf('DUES'))} icon={FiUsers} />
-          </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <StatCard label="Tickets" value={formatCurrency(sumOf('TICKETS'))} />
-            <StatCard label="Merchandise" value={formatCurrency(sumOf('MERCHANDISE'))} />
-            <StatCard label="Fundraiser income" value={formatCurrency(sumOf('FUNDRAISER'))} />
-          </div>
+          <FilterCard className="mb-6">
+            <FilterField label="Search" htmlFor="fin-q" className="flex-1 min-w-[200px]">
+              <div className="relative">
+                <LuSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cf-muted" />
+                <input id="fin-q" className="input-base pl-9" placeholder="Description..." value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+              </div>
+            </FilterField>
+            <FilterField label="Type" htmlFor="fin-type">
+              <Select id="fin-type" value={type} onChange={(e) => { setType(e.target.value); setPage(1); }} className="w-36">
+                <option value="">All types</option>
+                {TXN_TYPES.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}
+              </Select>
+            </FilterField>
+            <FilterField label="Category" htmlFor="fin-cat">
+              <Select id="fin-cat" value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }} className="w-40">
+                <option value="">All categories</option>
+                {TXN_CATEGORIES.map((c) => <option key={c} value={c}>{humanize(c)}</option>)}
+              </Select>
+            </FilterField>
+          </FilterCard>
 
-          <div className="mt-6 grid gap-6 xl:grid-cols-2">
-            <Card title="Income and expense by month">
-              <IncomeExpenseChart data={(s.byMonth ?? []).slice(-MONTHS_SHOWN)} />
-            </Card>
-            <div className="space-y-6">
-              <Card title="Income by category">
-                <CategoryBreakdownChart label="Income by category" data={categoryData(s.byCategory ?? [], 'INCOME')} color={INCOME_COLOR} />
-              </Card>
-              <Card title="Expenses by category">
-                <CategoryBreakdownChart label="Expenses by category" data={categoryData(s.byCategory ?? [], 'EXPENSE')} color={EXPENSE_COLOR} />
-              </Card>
-            </div>
-          </div>
+          {isLoading ? (
+            <TableSkeleton rows={10} cols={5} />
+          ) : error ? (
+            <ErrorState error={error.message} onRetry={refetch} />
+          ) : rows.length === 0 ? (
+            <EmptyState icon={LuDollarSign} title="No transactions" message="Try adjusting your filters." />
+          ) : (
+            <DataCard title={`${meta?.total ?? 0} transactions`}>
+              <Table>
+                <Thead>
+                  <Th>Date</Th>
+                  <Th>Type</Th>
+                  <Th>Category</Th>
+                  <Th>Description</Th>
+                  <Th right>Amount</Th>
+                </Thead>
+                <Tbody>
+                  {rows.map((t) => (
+                    <Tr key={t.id}>
+                      <Td muted>{formatDate(t.occurredAt)}</Td>
+                      <Td><Badge status={t.type} /></Td>
+                      <Td muted>{humanize(t.category)}</Td>
+                      <Td>
+                        <p className="text-sm text-cf-fg">{t.description}</p>
+                        {t.event && <p className="text-xs text-cf-muted">{t.event.title}</p>}
+                        {t.fundraiser && <p className="text-xs text-cf-muted">{t.fundraiser.title}</p>}
+                      </Td>
+                      <Td right>
+                        <span className={`font-semibold tabular-nums ${t.type === 'INCOME' ? 'text-cf-success' : 'text-cf-accent'}`}>
+                          {t.type === 'INCOME' ? '+' : '-'}{formatCurrency(t.amount)}
+                        </span>
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+              <Pagination meta={meta} onChange={setPage} />
+            </DataCard>
+          )}
         </>
       )}
 
-      <Card className="mt-6" title="Ledger" subtitle="Filtered by the controls above" padded={false}>
-        {ledger.error ? (
-          <ErrorState message={ledger.error} onRetry={ledger.reload} />
-        ) : (
-          <LedgerTable rows={ledger.data} meta={ledger.meta} loading={ledger.loading} sort={sort} onSort={toggleSort} onPage={setPage} />
-        )}
-      </Card>
-
-      <Card className="mt-6" title="Per-event report" subtitle="Registrations versus attendance, and what each event made" padded={false}>
-        {report.error ? (
-          <ErrorState message={report.error} onRetry={report.reload} />
-        ) : (
-          <>
-            <Table columns={reportColumns} rows={reportRows} loading={report.loading} rowKey="eventId" emptyTitle="No event data yet" />
-            {reportRows.length > 0 && (
-              <div className="grid gap-6 border-t border-slate-100 p-4 lg:grid-cols-2">
-                <div>
-                  <h3 className="mb-2 text-sm font-semibold text-slate-800">Revenue by event</h3>
-                  <CategoryBreakdownChart label="Revenue by event" data={reportRows.map((row) => ({ name: row.title, value: row.revenue }))} color={INCOME_COLOR} />
-                </div>
-                <div>
-                  <h3 className="mb-2 text-sm font-semibold text-slate-800">Attendance rate by event</h3>
-                  <CategoryBreakdownChart
-                    label="Attendance rate by event"
-                    data={reportRows.filter((row) => row.attendanceRate != null).map((row) => ({ name: row.title, value: Math.round(row.attendanceRate * 100) }))}
-                    color={INCOME_COLOR}
-                    formatValue={(value) => `${value}%`}
-                    formatTick={(value) => `${value}%`}
-                    emptyMessage="Attendance appears once an event has finished."
-                  />
-                </div>
-              </div>
+      {tab === 'summary' && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <DataCard title="By category">
+            {(!summary?.byCategory?.length) ? (
+              <p className="p-6 text-xs text-cf-muted">No data.</p>
+            ) : (
+              <ul className="divide-y divide-cf-divider">
+                {summary.byCategory.map((c) => (
+                  <li key={`${c.type}-${c.category}`} className="flex items-center justify-between px-6 py-3">
+                    <span className="text-sm text-cf-fg">{humanize(c.category)}</span>
+                    <span className={`text-sm font-semibold tabular-nums ${c.type === 'INCOME' ? 'text-cf-success' : 'text-cf-accent'}`}>
+                      {formatCurrency(c.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
-          </>
-        )}
-      </Card>
-
-      {entryOpen && (
-        <ManualEntryForm
-          events={events.data}
-          fundraisers={fundraisers.data}
-          onClose={() => setEntryOpen(false)}
-          onSaved={() => { setEntryOpen(false); ledger.reload(); summary.reload(); report.reload(); }}
-        />
+          </DataCard>
+          <DataCard title="By event">
+            {(!summary?.byEvent?.length) ? (
+              <p className="p-6 text-xs text-cf-muted">No event transactions.</p>
+            ) : (
+              <ul className="divide-y divide-cf-divider">
+                {summary.byEvent.map((e) => (
+                  <li key={e.eventId} className="flex items-center justify-between px-6 py-3">
+                    <span className="text-sm text-cf-fg">{e.title}</span>
+                    <span className={`text-sm font-semibold tabular-nums ${e.net >= 0 ? 'text-cf-success' : 'text-cf-accent'}`}>
+                      {formatCurrency(e.net)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </DataCard>
+        </div>
       )}
-    </>
+
+      {addOpen && <AddTransactionModal onClose={() => setAddOpen(false)} onSaved={() => setAddOpen(false)} />}
+    </div>
   );
 }

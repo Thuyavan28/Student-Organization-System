@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiEdit2, FiPlay, FiPlus } from 'react-icons/fi';
+import { LuPencil, LuPlay, LuPlus } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { membersApi } from '../../api/members.api';
 import { membershipsApi } from '../../api/memberships.api';
@@ -112,7 +112,7 @@ export default function Settings() {
       header: '',
       render: (row) => (
         <div className="flex justify-end">
-          <Button size="sm" variant="ghost" icon={FiEdit2} onClick={() => setFormState({ tier: row })} aria-label={`Edit ${row.name}`} />
+          <Button size="sm" variant="ghost" icon={LuPencil} onClick={() => setFormState({ tier: row })} aria-label={`Edit ${row.name}`} />
         </div>
       ),
     },
@@ -125,14 +125,14 @@ export default function Settings() {
         <Card
           title="Membership tiers"
           padded={false}
-          actions={<Button size="sm" icon={FiPlus} onClick={() => setFormState({ tier: null })}>New tier</Button>}
+          actions={<Button size="sm" icon={LuPlus} onClick={() => setFormState({ tier: null })}>New tier</Button>}
         >
           {tiers.error ? <ErrorState message={tiers.error} onRetry={tiers.reload} /> : <Table columns={columns} rows={tiers.data} loading={tiers.loading} emptyTitle="No tiers yet" />}
         </Card>
 
         <Card title="Membership expiry job" subtitle="Runs automatically every day. Run it now to expire lapsed memberships and send renewal reminders.">
           <div className="flex flex-wrap items-center gap-4">
-            <Button icon={FiPlay} loading={running} onClick={runJob}>Run now</Button>
+            <Button icon={LuPlay} loading={running} onClick={runJob}>Run now</Button>
             {lastRun && (
               <p className="text-sm text-slate-600">
                 Last run: {lastRun.expired} memberships expired, {lastRun.remindersSent} reminders sent.

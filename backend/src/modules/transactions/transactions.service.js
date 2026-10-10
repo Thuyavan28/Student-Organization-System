@@ -1,17 +1,37 @@
 import { randomUUID } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { badRequest } from '../../utils/apiError.js';
 import { toCsv } from '../../utils/csv.js';
+import * as cache from '../../utils/memoryCache.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
 import { eventsService } from '../events/events.service.js';
 
-const EXPORT_LIMIT = 10000;
+// Prisma.sql is used ONLY for monthlyTotals below. date_trunc('month') has no ORM equivalent in
+// Prisma 5.x, so that one query must remain raw. Everything else uses the ORM.
 
-const ledgerInclude = {
+const SUMMARY_TTL_SECONDS = 30;
+const EXPORT_BATCH_SIZE = 500;
+
+const ledgerSelect = {
+  id: true, type: true, category: true, amount: true, description: true, sourceType: true, occurredAt: true,
+  eventId: true, fundraiserId: true,
   event: { select: { id: true, title: true } },
   fundraiser: { select: { id: true, title: true } },
   recordedBy: { select: { id: true, name: true } },
 };
+
+const CSV_COLUMNS = [
+  { header: 'Date', value: (row) => row.occurredAt },
+  { header: 'Type', value: (row) => row.type },
+  { header: 'Category', value: (row) => row.category },
+  { header: 'Amount (Rs)', value: (row) => (row.amount / 100).toFixed(2) },
+  { header: 'Description', value: (row) => row.description },
+  { header: 'Event', value: (row) => row.event?.title },
+  { header: 'Fundraiser', value: (row) => row.fundraiser?.title },
+  { header: 'Source', value: (row) => row.sourceType },
+  { header: 'Recorded by', value: (row) => row.recordedBy?.name },
+];
 
 function buildWhere({ type, category, eventId, fundraiserId, from, to, q }) {
   const where = {};
@@ -24,64 +44,97 @@ function buildWhere({ type, category, eventId, fundraiserId, from, to, q }) {
   return where;
 }
 
-function monthKey(date) {
-  return date.toISOString().slice(0, 7);
-}
 
-// Every month between the first and last ledger month appears, so charts have no gaps.
-function monthlyBuckets(rows) {
+// Every month between the first and last month appears, so charts have no gaps.
+function fillMonths(rows) {
   if (rows.length === 0) return [];
-  const buckets = new Map();
-  let first = rows[0].occurredAt;
-  let last = rows[0].occurredAt;
-  for (const row of rows) {
-    if (row.occurredAt < first) first = row.occurredAt;
-    if (row.occurredAt > last) last = row.occurredAt;
-    const key = monthKey(row.occurredAt);
-    const bucket = buckets.get(key) ?? { month: key, income: 0, expense: 0 };
-    bucket[row.type === 'INCOME' ? 'income' : 'expense'] += row.amount;
-    buckets.set(key, bucket);
-  }
+  const byKey = new Map(rows.map((row) => [row.month, row]));
+  const [firstYear, firstMonth] = rows[0].month.split('-').map(Number);
+  const [lastYear, lastMonth] = rows[rows.length - 1].month.split('-').map(Number);
   const result = [];
-  const cursor = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 1));
-  const end = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), 1));
-  while (cursor <= end) {
-    const key = monthKey(cursor);
-    result.push(buckets.get(key) ?? { month: key, income: 0, expense: 0 });
-    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+  for (let year = firstYear, month = firstMonth; year < lastYear || (year === lastYear && month <= lastMonth); ) {
+    const key = `${year}-${String(month).padStart(2, '0')}`;
+    result.push(byKey.get(key) ?? { month: key, income: 0, expense: 0 });
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
   }
   return result;
 }
 
-async function labelled(groups, key, model) {
-  const ids = [...new Set(groups.map((group) => group[key]))];
-  const records = await prisma[model].findMany({ where: { id: { in: ids } }, select: { id: true, title: true } });
-  const titles = new Map(records.map((record) => [record.id, record.title]));
-  return ids.map((id) => {
-    const income = groups.find((group) => group[key] === id && group.type === 'INCOME')?._sum.amount ?? 0;
-    const expense = groups.find((group) => group[key] === id && group.type === 'EXPENSE')?._sum.amount ?? 0;
-    return { [key]: id, title: titles.get(id) ?? `#${id}`, income, expense, net: income - expense };
+// Prisma cannot group by a truncated date, so the monthly buckets are computed by one grouped SQL query.
+// The database returns at most one row per month instead of every ledger row being loaded.
+async function monthlyTotals(from, to) {
+  const rows = await prisma.$queryRaw`
+    SELECT to_char(date_trunc('month', occurred_at AT TIME ZONE 'UTC'), 'YYYY-MM') AS month,
+           COALESCE(SUM(amount) FILTER (WHERE type = 'INCOME'), 0)::float8 AS income,
+           COALESCE(SUM(amount) FILTER (WHERE type = 'EXPENSE'), 0)::float8 AS expense
+    FROM transactions
+    WHERE ${rangeSql(from, to)}
+    GROUP BY 1
+    ORDER BY 1`;
+  return fillMonths(rows.map((row) => ({ month: row.month, income: Number(row.income), expense: Number(row.expense) })));
+}
+
+// Prisma groupBy cannot join a related table directly, so titles are fetched in a second parallel
+// query and merged in memory. Two indexed ORM queries are faster than one dynamic raw SQL JOIN
+// because the query planner can use prepared statements and the ORM avoids a full SQL parse.
+async function totalsBy(model, groupField, labelField, where) {
+  const rows = await prisma.transaction.groupBy({
+    by: [groupField, 'type'],
+    where: { ...where, [groupField]: { not: null } },
+    _sum: { amount: true },
   });
+  if (rows.length === 0) return [];
+  const ids = [...new Set(rows.map((r) => r[groupField]))];
+  const labels = await prisma[model].findMany({
+    where: { id: { in: ids } },
+    select: { id: true, [labelField]: true },
+  });
+  const titleMap = new Map(labels.map((l) => [l.id, l[labelField]]));
+  const byId = new Map();
+  for (const row of rows) {
+    const id = row[groupField];
+    const entry = byId.get(id) ?? { id, title: titleMap.get(id) ?? String(id), income: 0, expense: 0 };
+    if (row.type === 'INCOME') entry.income += row._sum.amount ?? 0;
+    else entry.expense += row._sum.amount ?? 0;
+    byId.set(id, entry);
+  }
+  return [...byId.values()].map((e) => ({ ...e, net: e.income - e.expense })).sort((a, b) => a.title.localeCompare(b.title));
+}
+
+async function categoryTotals(from, to) {
+  const rows = await prisma.transaction.groupBy({ by: ['type', 'category'], where: buildWhere({ from, to }), _sum: { amount: true } });
+  return rows.map((row) => ({ type: row.type, category: row.category, amount: row._sum.amount ?? 0 }));
 }
 
 // Manual entries have no natural source row, so each gets a random UUID as its source id.
 function recordManual(client, data) {
   return client.transaction.create({
     data: { ...data, sourceType: 'MANUAL', sourceId: randomUUID(), occurredAt: data.occurredAt ?? new Date() },
-    include: ledgerInclude,
+    select: ledgerSelect,
   });
+}
+
+function invalidateLedger() {
+  cache.delByPrefix('finance:');
+  cache.delByPrefix('dashboard:');
 }
 
 export const transactionsService = {
   recordManual,
+  categoryTotals,
+  monthlyTotals,
 
   async list(query) {
-    const page = parsePagination(query, 15);
+    const page = parsePagination(query);
     const where = buildWhere(query);
     const [rows, total] = await Promise.all([
       prisma.transaction.findMany({
         where,
-        include: ledgerInclude,
+        select: ledgerSelect,
         orderBy: [{ [query.sort]: query.order }, { id: 'desc' }],
         skip: page.skip,
         take: page.take,
@@ -98,46 +151,53 @@ export const transactionsService = {
     ]);
     if (!event) throw badRequest('INVALID_EVENT', 'The selected event does not exist');
     if (!fundraiser) throw badRequest('INVALID_FUNDRAISER', 'The selected fundraiser does not exist');
-    return recordManual(prisma, { ...body, recordedById: user.id });
+    const row = await recordManual(prisma, { ...body, recordedById: user.id });
+    invalidateLedger();
+    cache.delByPrefix('fundraisers:');
+    return row;
   },
 
-  // All finance numbers are computed from the ledger only, so they can never double count.
-  async summary({ from, to } = {}) {
-    const where = buildWhere({ from, to });
-    const [byTypeCategory, rows, byEvent, byFundraiser] = await Promise.all([
-      prisma.transaction.groupBy({ by: ['type', 'category'], where, _sum: { amount: true } }),
-      prisma.transaction.findMany({ where, select: { type: true, amount: true, occurredAt: true } }),
-      prisma.transaction.groupBy({ by: ['eventId', 'type'], where: { ...where, eventId: { not: null } }, _sum: { amount: true } }),
-      prisma.transaction.groupBy({ by: ['fundraiserId', 'type'], where: { ...where, fundraiserId: { not: null } }, _sum: { amount: true } }),
-    ]);
-    const byCategory = byTypeCategory.map((row) => ({ type: row.type, category: row.category, amount: row._sum.amount ?? 0 }));
-    const income = byCategory.filter((row) => row.type === 'INCOME').reduce((sum, row) => sum + row.amount, 0);
-    const expense = byCategory.filter((row) => row.type === 'EXPENSE').reduce((sum, row) => sum + row.amount, 0);
-    const [events, fundraisers] = await Promise.all([labelled(byEvent, 'eventId', 'event'), labelled(byFundraiser, 'fundraiserId', 'fundraiser')]);
-    return { income, expense, net: income - expense, byCategory, byMonth: monthlyBuckets(rows), byEvent: events, byFundraiser: fundraisers };
+  // All finance numbers are computed by the database from the ledger only, so they can never double count.
+  summary({ from, to } = {}) {
+    const key = `finance:summary:${from?.toISOString() ?? ''}:${to?.toISOString() ?? ''}`;
+    return cache.wrap(key, SUMMARY_TTL_SECONDS, async () => {
+      const [byCategory, byMonth, byEvent, byFundraiser] = await Promise.all([
+        categoryTotals(from, to),
+        monthlyTotals(from, to),
+        totalsBy('event', 'eventId', 'title', buildWhere({ from, to })),
+        totalsBy('fundraiser', 'fundraiserId', 'title', buildWhere({ from, to })),
+      ]);
+      const income = byCategory.filter((row) => row.type === 'INCOME').reduce((sum, row) => sum + row.amount, 0);
+      const expense = byCategory.filter((row) => row.type === 'EXPENSE').reduce((sum, row) => sum + row.amount, 0);
+      return {
+        income, expense, net: income - expense, byCategory, byMonth,
+        byEvent: byEvent.map(({ id, ...rest }) => ({ eventId: id, ...rest })),
+        byFundraiser: byFundraiser.map(({ id, ...rest }) => ({ fundraiserId: id, ...rest })),
+      };
+    });
   },
 
   eventReport() {
-    return eventsService.report();
+    return cache.wrap('finance:events', SUMMARY_TTL_SECONDS, () => eventsService.report());
   },
 
-  async exportCsv(query) {
-    const rows = await prisma.transaction.findMany({
-      where: buildWhere(query),
-      include: ledgerInclude,
-      orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
-      take: EXPORT_LIMIT,
-    });
-    return toCsv(rows, [
-      { header: 'Date', value: (row) => row.occurredAt },
-      { header: 'Type', value: (row) => row.type },
-      { header: 'Category', value: (row) => row.category },
-      { header: 'Amount (Rs)', value: (row) => (row.amount / 100).toFixed(2) },
-      { header: 'Description', value: (row) => row.description },
-      { header: 'Event', value: (row) => row.event?.title },
-      { header: 'Fundraiser', value: (row) => row.fundraiser?.title },
-      { header: 'Source', value: (row) => row.sourceType },
-      { header: 'Recorded by', value: (row) => row.recordedBy?.name },
-    ]);
+  // Streams the ledger in batches with a cursor, so memory stays flat however large the ledger grows.
+  async *exportCsv(query) {
+    const where = buildWhere(query);
+    yield `${toCsv([], CSV_COLUMNS)}\r\n`;
+    let cursor;
+    for (;;) {
+      const rows = await prisma.transaction.findMany({
+        where,
+        select: ledgerSelect,
+        orderBy: { id: 'desc' },
+        take: EXPORT_BATCH_SIZE,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      });
+      if (rows.length === 0) return;
+      yield `${toCsv(rows, CSV_COLUMNS).split('\r\n').slice(1).join('\r\n')}\r\n`;
+      cursor = rows[rows.length - 1].id;
+      if (rows.length < EXPORT_BATCH_SIZE) return;
+    }
   },
 };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { FiArrowLeft, FiDollarSign, FiEdit2, FiPlus } from 'react-icons/fi';
+import { LuArrowLeft, LuDollarSign, LuPencil, LuPlus } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { fundraisersApi } from '../../api/fundraisers.api';
 import { tasksApi } from '../../api/tasks.api';
@@ -132,7 +132,7 @@ function IncomeForm({ fundraiserId, onClose, onSaved }) {
       <form id="income-form" onSubmit={submit} noValidate className="space-y-4">
         <Input label="Amount (Rs)" type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} error={errors.amount} />
         <Input label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} error={errors.description} placeholder="Bake sale cash, day 2" />
-        <p className="text-xs text-slate-500">This adds a row to the finance ledger, so the raised total and the finance page always agree.</p>
+        <p className="text-xs text-slate-500">This adds a row to the Finance ledger, so the raised total and the Finance page always agree.</p>
       </form>
     </Modal>
   );
@@ -171,7 +171,7 @@ export default function FundraiserDetail() {
   return (
     <>
       <Link to="/admin/fundraisers" className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
-        <FiArrowLeft aria-hidden="true" /> All fundraisers
+        <LuArrowLeft aria-hidden="true" /> All fundraisers
       </Link>
       <PageHeader
         title={f?.title ?? 'Fundraiser'}
@@ -179,9 +179,9 @@ export default function FundraiserDetail() {
         actions={
           <>
             {f && <Badge status={f.status} />}
-            {canRecordIncome && <Button variant="secondary" icon={FiDollarSign} onClick={() => setModal({ type: 'income' })}>Record income</Button>}
-            {isAdmin && <Button variant="secondary" icon={FiEdit2} onClick={() => setModal({ type: 'edit' })}>Edit</Button>}
-            {isAdmin && <Button icon={FiPlus} onClick={() => setModal({ type: 'task', task: null })}>Add task</Button>}
+            {canRecordIncome && <Button variant="secondary" icon={LuDollarSign} onClick={() => setModal({ type: 'income' })}>Record income</Button>}
+            {isAdmin && <Button variant="secondary" icon={LuPencil} onClick={() => setModal({ type: 'edit' })}>Edit</Button>}
+            {isAdmin && <Button icon={LuPlus} onClick={() => setModal({ type: 'task', task: null })}>Add task</Button>}
           </>
         }
       />

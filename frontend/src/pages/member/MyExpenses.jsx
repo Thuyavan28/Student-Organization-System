@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiFileText, FiPaperclip } from 'react-icons/fi';
+import { LuFileText, LuPaperclip } from 'react-icons/lu';
 import { expensesApi } from '../../api/expenses.api';
 import ExpenseForm from '../../components/feature/ExpenseForm';
 import ReceiptPreview from '../../components/feature/ReceiptPreview';
@@ -39,7 +39,7 @@ export default function MyExpenses() {
       header: 'Receipt',
       render: (row) =>
         row.receiptUrl ? (
-          <Button size="sm" variant="ghost" icon={FiPaperclip} onClick={() => setReceipt(row.receiptUrl)}>View</Button>
+          <Button size="sm" variant="ghost" icon={LuPaperclip} onClick={() => setReceipt(row.receiptUrl)}>View</Button>
         ) : (
           <span className="text-slate-400">None</span>
         ),
@@ -62,7 +62,7 @@ export default function MyExpenses() {
                 columns={columns}
                 rows={data}
                 loading={loading}
-                emptyIcon={FiFileText}
+                emptyIcon={LuFileText}
                 emptyTitle="No claims yet"
                 emptyMessage="Claims you submit will appear here with their review status."
               />

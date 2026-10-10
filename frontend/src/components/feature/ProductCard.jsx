@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiMinus, FiPlus, FiShoppingCart } from 'react-icons/fi';
+import { LuMinus, LuPlus, LuShoppingCart } from 'react-icons/lu';
 import { LOW_STOCK_THRESHOLD } from '../../utils/constants';
 import { formatCurrency } from '../../utils/formatCurrency';
 import Badge from '../ui/Badge';
@@ -26,7 +26,7 @@ export default function ProductCard({ product, onAdd }) {
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="flex h-32 items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 text-primary-600">
-        <FiShoppingCart className="h-10 w-10" aria-hidden="true" />
+        <LuShoppingCart className="h-10 w-10" aria-hidden="true" />
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div>
@@ -60,7 +60,7 @@ export default function ProductCard({ product, onAdd }) {
               disabled={quantity <= 1}
               aria-label="Decrease quantity"
             >
-              <FiMinus className="h-4 w-4" />
+              <LuMinus className="h-4 w-4" />
             </button>
             <span className="w-8 text-center text-sm tabular-nums" aria-live="polite">{quantity}</span>
             <button
@@ -70,10 +70,10 @@ export default function ProductCard({ product, onAdd }) {
               disabled={!variant || quantity >= limit}
               aria-label="Increase quantity"
             >
-              <FiPlus className="h-4 w-4" />
+              <LuPlus className="h-4 w-4" />
             </button>
           </div>
-          <Button className="flex-1" icon={FiShoppingCart} disabled={!variant} onClick={add}>
+          <Button className="flex-1" icon={LuShoppingCart} disabled={!variant} onClick={add}>
             {variant ? 'Add to cart' : 'Pick a size'}
           </Button>
         </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { FiLogOut, FiMenu, FiX, FiZap } from 'react-icons/fi';
+import { LuLogOut, LuMenu, LuX, LuZap } from 'react-icons/lu';
 import { useAuth } from '../../hooks/useAuth';
 import { homeFor } from '../../utils/constants';
 import Button from '../ui/Button';
@@ -29,7 +29,7 @@ export default function PublicNavbar() {
     <header className="no-print sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2 text-lg font-bold text-primary-700">
-          <FiZap aria-hidden="true" />
+          <LuZap aria-hidden="true" />
           ClubFlow
         </Link>
 
@@ -47,7 +47,7 @@ export default function PublicNavbar() {
               <Button size="sm" onClick={() => navigate(homeFor(user.role))}>
                 {user.role === 'MEMBER' ? 'My account' : 'Dashboard'}
               </Button>
-              <Button size="sm" variant="ghost" icon={FiLogOut} onClick={handleLogout}>
+              <Button size="sm" variant="ghost" icon={LuLogOut} onClick={handleLogout}>
                 Log out
               </Button>
             </>
@@ -69,7 +69,7 @@ export default function PublicNavbar() {
           aria-label={open ? 'Close menu' : 'Open menu'}
           onClick={() => setOpen((value) => !value)}
         >
-          {open ? <FiX className="h-5 w-5" /> : <FiMenu className="h-5 w-5" />}
+          {open ? <LuX className="h-5 w-5" /> : <LuMenu className="h-5 w-5" />}
         </button>
       </div>
 

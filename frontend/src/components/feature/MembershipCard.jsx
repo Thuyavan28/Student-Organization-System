@@ -1,4 +1,4 @@
-import { FiRefreshCw, FiZap } from 'react-icons/fi';
+import { LuRefreshCw, LuZap } from 'react-icons/lu';
 import { daysUntil, formatDate } from '../../utils/formatDate';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
@@ -17,7 +17,7 @@ export default function MembershipCard({ member, name, onRenew }) {
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-700 via-primary-600 to-primary-800 p-5 text-white shadow-lg sm:p-6">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-primary-100">
-          <FiZap aria-hidden="true" /> Skyline Student Association
+          <LuZap aria-hidden="true" /> Skyline Student Association
         </div>
         <Badge status={displayStatus} />
       </div>
@@ -41,7 +41,7 @@ export default function MembershipCard({ member, name, onRenew }) {
         </div>
       </dl>
       {onRenew && (
-        <Button className="mt-5 !bg-white !text-primary-700 hover:!bg-primary-50" icon={FiRefreshCw} onClick={onRenew}>
+        <Button className="mt-5 !bg-white !text-primary-700 hover:!bg-primary-50" icon={LuRefreshCw} onClick={onRenew}>
           {active ? 'Renew membership' : 'Reactivate membership'}
         </Button>
       )}

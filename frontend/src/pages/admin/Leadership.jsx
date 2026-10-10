@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiAward, FiPlus } from 'react-icons/fi';
+import { LuAward, LuPlus } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { leadershipApi } from '../../api/leadership.api';
 import { tasksApi } from '../../api/tasks.api';
@@ -133,13 +133,13 @@ export default function Leadership() {
       <PageHeader
         title="Leadership"
         subtitle="Elected officers by term."
-        actions={isAdmin && <Button icon={FiPlus} onClick={() => setAdding(true)}>Add officer</Button>}
+        actions={isAdmin && <Button icon={LuPlus} onClick={() => setAdding(true)}>Add officer</Button>}
       />
       <Card padded={false}>
         {error ? (
           <ErrorState message={error} onRetry={reload} />
         ) : (
-          <Table columns={columns} rows={data} loading={loading} emptyIcon={FiAward} emptyTitle="No officers recorded" emptyMessage="Add the elected officers for the current term." />
+          <Table columns={columns} rows={data} loading={loading} emptyIcon={LuAward} emptyTitle="No officers recorded" emptyMessage="Add the elected officers for the current term." />
         )}
       </Card>
       {adding && <LeadershipForm users={users.data} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); reload(); }} />}

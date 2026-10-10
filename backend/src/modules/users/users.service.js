@@ -1,8 +1,11 @@
 import { prisma } from '../../config/prisma.js';
 
+const DROPDOWN_LIMIT = 50;
+const DEFAULT_FIELDS = ['id', 'name', 'email', 'role'];
+
 export const usersService = {
-  // Lightweight lookup for assignee and officer pickers.
-  async search({ q, role }) {
+  // Slim lookup for assignee and officer pickers: only the requested columns, bounded, never the full table.
+  async search({ q, role, fields = DEFAULT_FIELDS }) {
     const where = { isActive: true };
     if (role) where.role = role;
     if (q) {
@@ -13,9 +16,9 @@ export const usersService = {
     }
     const users = await prisma.user.findMany({
       where,
-      select: { id: true, name: true, email: true, role: true },
-      orderBy: [{ role: 'asc' }, { name: 'asc' }],
-      take: 20,
+      select: Object.fromEntries(fields.map((field) => [field, true])),
+      orderBy: { name: 'asc' },
+      take: DROPDOWN_LIMIT,
     });
     return { data: users };
   },

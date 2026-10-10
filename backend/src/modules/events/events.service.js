@@ -1,9 +1,18 @@
 import { prisma } from '../../config/prisma.js';
 import { badRequest, conflict, notFound } from '../../utils/apiError.js';
+import * as cache from '../../utils/memoryCache.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
 import { priceFor } from '../bookings/bookings.service.js';
 import { membershipsService } from '../memberships/memberships.service.js';
 import { scheduleProblems } from './events.schema.js';
+
+const EVENTS_LIST_TTL_SECONDS = 30;
+
+function invalidateEvents() {
+  cache.delByPrefix('events:');
+  cache.delByPrefix('dashboard:');
+  cache.delByPrefix('finance:');
+}
 
 const MANAGERS = ['ADMIN', 'TREASURER'];
 const PUBLIC_STATUSES = ['PUBLISHED', 'COMPLETED'];
@@ -119,6 +128,7 @@ export const eventsService = {
     const page = parsePagination(query, 12);
     const now = new Date();
     const where = {};
+    const isPublicRequest = !isManager(user) && !query.q && !query.status && !query.upcoming;
     if (isManager(user)) {
       if (query.status) where.status = query.status;
     } else {
@@ -131,12 +141,17 @@ export const eventsService = {
     }
     if (query.q) where.OR = [{ title: { contains: query.q, mode: 'insensitive' } }, { venue: { contains: query.q, mode: 'insensitive' } }];
 
-    const [rows, total] = await Promise.all([
-      prisma.event.findMany({ where, orderBy: { startAt: query.upcoming ? 'asc' : 'desc' }, skip: page.skip, take: page.take }),
-      prisma.event.count({ where }),
-    ]);
-    const counts = await bookedCounts(rows.map((event) => event.id));
-    return paginated(rows.map((event) => withSeats(event, counts)), total, page);
+    const cacheKey = `events:list:${JSON.stringify({ where, skip: page.skip, take: page.take })}`;
+    const load = async () => {
+      const [rows, total] = await Promise.all([
+        prisma.event.findMany({ where, orderBy: { startAt: query.upcoming ? 'asc' : 'desc' }, skip: page.skip, take: page.take }),
+        prisma.event.count({ where }),
+      ]);
+      const counts = await bookedCounts(rows.map((event) => event.id));
+      return paginated(rows.map((event) => withSeats(event, counts)), total, page);
+    };
+    // Cache public unfiltered lists only — authenticated requests with filters skip the cache.
+    return isPublicRequest ? cache.wrap(cacheKey, EVENTS_LIST_TTL_SECONDS, load) : load();
   },
 
   async get(id, user) {
@@ -158,8 +173,10 @@ export const eventsService = {
     return { ...result, yourPrice: price, isMemberPrice, yourBooking: booking };
   },
 
-  create(body, user) {
-    return prisma.event.create({ data: { ...body, status: 'DRAFT', createdById: user.id } });
+  async create(body, user) {
+    const event = await prisma.event.create({ data: { ...body, status: 'DRAFT', createdById: user.id } });
+    invalidateEvents();
+    return event;
   },
 
   async update(id, body) {
@@ -174,7 +191,9 @@ export const eventsService = {
         throw conflict('CAPACITY_BELOW_BOOKED', `${booked} seats are already booked, so capacity cannot be lower than that`);
       }
     }
-    return prisma.event.update({ where: { id }, data: body });
+    const updated = await prisma.event.update({ where: { id }, data: body });
+    invalidateEvents();
+    return updated;
   },
 
   async publish(id) {
@@ -198,9 +217,10 @@ export const eventsService = {
   },
 
   async stats(id) {
-    const event = await requireEvent(id);
-    const [row] = await report({ id });
-    return { ...row, capacity: event.capacity, seatsRemaining: Math.max(0, event.capacity - row.registrations) };
+    // All sub-queries run in parallel — no sequential awaits.
+    const [event, rows] = await Promise.all([requireEvent(id), report({ id })]);
+    const row = rows[0] ?? {};
+    return { ...row, capacity: event.capacity, seatsRemaining: Math.max(0, event.capacity - (row.registrations ?? 0)) };
   },
 
   async listBookings(id, query) {

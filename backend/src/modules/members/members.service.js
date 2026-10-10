@@ -1,4 +1,5 @@
 import { prisma } from '../../config/prisma.js';
+import * as cache from '../../utils/memoryCache.js';
 import { conflict, notFound } from '../../utils/apiError.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
 import { REMINDER_WINDOW_DAYS, runMembershipExpiry } from '../../jobs/membershipExpiry.job.js';
@@ -7,6 +8,21 @@ import { membershipsService } from '../memberships/memberships.service.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const memberInclude = { user: { select: { id: true, name: true, email: true, role: true } }, tier: true };
+// List rows carry only what the table and the edit form need, not whole related records.
+const listSelect = {
+  id: true, userId: true, studentId: true, department: true, year: true, phone: true, tierId: true,
+  membershipStatus: true, joinedAt: true, expiresAt: true, duesPaid: true,
+  user: { select: { id: true, name: true, email: true } },
+  tier: { select: { id: true, name: true } },
+};
+const STATS_TTL_SECONDS = 30;
+
+// Anything that changes membership figures also changes the dashboard and the ledger totals.
+function invalidateMembers() {
+  cache.delByPrefix('members:');
+  cache.delByPrefix('dashboard:');
+  cache.delByPrefix('finance:');
+}
 
 function present(member) {
   return { ...member, isActive: membershipsService.isActiveMember(member) };
@@ -31,7 +47,7 @@ export const membersService = {
       ];
     }
     const [rows, total] = await Promise.all([
-      prisma.member.findMany({ where, include: memberInclude, orderBy: sortOrder(query.sort, query.order), skip: page.skip, take: page.take }),
+      prisma.member.findMany({ where, select: listSelect, orderBy: sortOrder(query.sort, query.order), skip: page.skip, take: page.take }),
       prisma.member.count({ where }),
     ]);
     return paginated(rows.map(present), total, page);
@@ -42,16 +58,32 @@ export const membersService = {
     const now = new Date();
     const where = { membershipStatus: 'ACTIVE', expiresAt: { gt: now, lte: new Date(now.getTime() + query.days * DAY_MS) } };
     const [rows, total] = await Promise.all([
-      prisma.member.findMany({ where, include: memberInclude, orderBy: { expiresAt: 'asc' }, skip: page.skip, take: page.take }),
+      prisma.member.findMany({ where, select: listSelect, orderBy: { expiresAt: 'asc' }, skip: page.skip, take: page.take }),
       prisma.member.count({ where }),
     ]);
     return paginated(rows.map(present), total, page);
   },
 
+  // Headline counts for the Members page, computed by the database and cached briefly.
+  stats() {
+    return cache.wrap('members:stats', STATS_TTL_SECONDS, async () => {
+      const now = new Date();
+      const soon = new Date(now.getTime() + REMINDER_WINDOW_DAYS * DAY_MS);
+      const [total, active, expiringSoon, expired, pending] = await Promise.all([
+        prisma.member.count(),
+        prisma.member.count({ where: { membershipStatus: 'ACTIVE', expiresAt: { gt: now } } }),
+        prisma.member.count({ where: { membershipStatus: 'ACTIVE', expiresAt: { gt: now, lte: soon } } }),
+        prisma.member.count({ where: { membershipStatus: 'EXPIRED' } }),
+        prisma.member.count({ where: { membershipStatus: 'PENDING' } }),
+      ]);
+      return { total, active, expiringSoon, expired, pending };
+    });
+  },
+
   async get(id) {
     const member = await prisma.member.findUnique({
       where: { id },
-      include: { ...memberInclude, payments: { orderBy: { createdAt: 'desc' }, take: 20, include: { tier: true } } },
+      include: { ...memberInclude, payments: { orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, amount: true, status: true, paidAt: true, periodStart: true, periodEnd: true, tier: { select: { name: true } } } } },
     });
     if (!member) throw notFound('Member not found');
     return present(member);
@@ -60,7 +92,7 @@ export const membersService = {
   async me(userId) {
     const member = await prisma.member.findUnique({
       where: { userId },
-      include: { ...memberInclude, payments: { orderBy: { createdAt: 'desc' }, take: 10, include: { tier: true } } },
+      include: { tier: true, payments: { orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, amount: true, status: true, paidAt: true, periodStart: true, periodEnd: true, tier: { select: { name: true } } } } },
     });
     return member ? present(member) : null;
   },
@@ -78,6 +110,7 @@ export const membersService = {
       if (!tier) throw notFound('Membership tier not found');
       return membershipsService.recordDuesPayment(tx, created, tier, actor.id);
     });
+    invalidateMembers();
     return this.get(member.id);
   },
 
@@ -89,6 +122,7 @@ export const membersService = {
       if (name) await tx.user.update({ where: { id: member.userId }, data: { name } });
       if (Object.keys(profile).length > 0) await tx.member.update({ where: { id }, data: profile });
     });
+    invalidateMembers();
     return this.get(id);
   },
 
@@ -110,8 +144,10 @@ export const membersService = {
     };
   },
 
-  runReminders() {
-    return runMembershipExpiry();
+  async runReminders() {
+    const result = await runMembershipExpiry();
+    invalidateMembers();
+    return result;
   },
 
   reminderWindowDays: REMINDER_WINDOW_DAYS,

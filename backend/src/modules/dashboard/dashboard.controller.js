@@ -3,4 +3,5 @@ import { dashboardService } from './dashboard.service.js';
 
 export const dashboardController = {
   summary: asyncHandler(async (req, res) => res.json({ data: await dashboardService.summary() })),
+  charts: asyncHandler(async (req, res) => res.json({ data: await dashboardService.charts() })),
 };

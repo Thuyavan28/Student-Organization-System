@@ -6,13 +6,13 @@ import EmptyState from './components/ui/EmptyState';
 import { PageSpinner } from './components/ui/Spinner';
 import ProtectedRoute from './routes/ProtectedRoute';
 import { appRoutes, publicRoutes } from './routes/routeConfig';
-import { FiCompass } from 'react-icons/fi';
+import { LuCompass } from 'react-icons/lu';
 
 function NotFound() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <EmptyState
-        icon={FiCompass}
+        icon={LuCompass}
         title="Page not found"
         message="The page you are looking for does not exist."
         action={<Link to="/"><Button>Back to home</Button></Link>}
