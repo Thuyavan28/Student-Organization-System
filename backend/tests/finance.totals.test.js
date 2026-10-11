@@ -84,12 +84,6 @@ describe('finance totals', () => {
     assert.equal(res.body.meta.total, total);
   });
 
-  test('the fundraiser raised total equals the ledger income linked to it', async () => {
-    const summaryRes = await request(app).get('/api/fundraisers/1/summary').set(authed(treasurer.token));
-    const ledger = await prisma.transaction.aggregate({ where: { fundraiserId: 1, type: 'INCOME' }, _sum: { amount: true } });
-    assert.equal(summaryRes.body.data.raised, ledger._sum.amount ?? 0);
-  });
-
   test('the CSV export has a header and one line per ledger row', async () => {
     const res = await request(app).get('/api/finance/export.csv?type=INCOME&category=DUES').set(authed(treasurer.token));
     assert.equal(res.status, 200);

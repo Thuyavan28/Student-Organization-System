@@ -68,7 +68,7 @@ export default function EventDetail() {
   const confirmBooking = async (paymentMeta) => {
     setBooking(true);
     try {
-      const res = await bookingsApi.create(event.id);
+      const res = await bookingsApi.create(event.id, paymentMeta?.sessionId);
       toast.success('Payment verified! Your ticket QR is generated.');
       setConfirmOpen(false);
       setBookingResult({

@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
-import { LuArrowLeft, LuCalendar, LuHeart, LuQrCode, LuShoppingBag, LuZap } from 'react-icons/lu';
+import { LuArrowLeft, LuBell, LuCalendar, LuQrCode, LuShoppingBag, LuZap } from 'react-icons/lu';
 
 const HIGHLIGHTS = [
   { icon: LuCalendar, title: 'Events and tickets', text: 'Book seats at member prices and keep your QR ticket on your phone.' },
   { icon: LuQrCode, title: 'Instant check-in', text: 'Scan at the door. No lists, no queues.' },
   { icon: LuShoppingBag, title: 'Merchandise', text: 'Order by size, with stock tracked for every variant.' },
-  { icon: LuHeart, title: 'Fundraisers', text: 'Follow campaign progress from goal to the last task.' },
+  { icon: LuBell, title: 'Announcements', text: 'Hear about club news the moment it is posted.' },
 ];
 
 // Split-screen shell for login / register: brand panel on the left (desktop only),

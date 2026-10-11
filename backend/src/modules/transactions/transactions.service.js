@@ -5,19 +5,20 @@ import { badRequest } from '../../utils/apiError.js';
 import { toCsv } from '../../utils/csv.js';
 import * as cache from '../../utils/memoryCache.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
+import { likePattern, orderBy, whereAll } from '../../utils/sql.js';
 import { eventsService } from '../events/events.service.js';
 
 // Prisma.sql is used ONLY for monthlyTotals below. date_trunc('month') has no ORM equivalent in
 // Prisma 5.x, so that one query must remain raw. Everything else uses the ORM.
 
 const SUMMARY_TTL_SECONDS = 30;
+const SUMMARY_STALE_SECONDS = 60; // after expiry the old numbers are served instantly while one request recomputes them
 const EXPORT_BATCH_SIZE = 500;
 
 const ledgerSelect = {
   id: true, type: true, category: true, amount: true, description: true, sourceType: true, occurredAt: true,
-  eventId: true, fundraiserId: true,
+  eventId: true,
   event: { select: { id: true, title: true } },
-  fundraiser: { select: { id: true, title: true } },
   recordedBy: { select: { id: true, name: true } },
 };
 
@@ -28,17 +29,15 @@ const CSV_COLUMNS = [
   { header: 'Amount (Rs)', value: (row) => (row.amount / 100).toFixed(2) },
   { header: 'Description', value: (row) => row.description },
   { header: 'Event', value: (row) => row.event?.title },
-  { header: 'Fundraiser', value: (row) => row.fundraiser?.title },
   { header: 'Source', value: (row) => row.sourceType },
   { header: 'Recorded by', value: (row) => row.recordedBy?.name },
 ];
 
-function buildWhere({ type, category, eventId, fundraiserId, from, to, q }) {
+function buildWhere({ type, category, eventId, from, to, q }) {
   const where = {};
   if (type) where.type = type;
   if (category) where.category = category;
   if (eventId) where.eventId = eventId;
-  if (fundraiserId) where.fundraiserId = fundraiserId;
   if (from || to) where.occurredAt = { ...(from && { gte: from }), ...(to && { lte: to }) };
   if (q) where.description = { contains: q, mode: 'insensitive' };
   return where;
@@ -137,32 +136,49 @@ export const transactionsService = {
   categoryTotals,
   monthlyTotals,
 
+  // One SQL statement returns the page of ledger rows (with event and recorder names) and the total.
   async list(query) {
     const page = parsePagination(query);
-    const where = buildWhere(query);
-    const [rows, total] = await Promise.all([
-      prisma.transaction.findMany({
-        where,
-        select: ledgerSelect,
-        orderBy: [{ [query.sort]: query.order }, { id: 'desc' }],
-        skip: page.skip,
-        take: page.take,
-      }),
-      prisma.transaction.count({ where }),
-    ]);
-    return paginated(rows, total, page);
+    const c = [];
+    if (query.type) c.push(Prisma.sql`t.type = ${query.type}::txn_type`);
+    if (query.category) c.push(Prisma.sql`t.category = ${query.category}::txn_category`);
+    if (query.eventId) c.push(Prisma.sql`t.event_id = ${query.eventId}`);
+    if (query.from) c.push(Prisma.sql`t.occurred_at >= ${query.from}`);
+    if (query.to) c.push(Prisma.sql`t.occurred_at <= ${query.to}`);
+    if (query.q) c.push(Prisma.sql`t.description ILIKE ${likePattern(query.q)}`);
+    const order = orderBy({ occurredAt: 't.occurred_at', amount: 't.amount' }, query.sort, query.order, 't.id');
+
+    const rows = await prisma.$queryRaw`
+      SELECT t.id, t.type::text AS type, t.category::text AS category, t.amount, t.description,
+             t.source_type::text AS "sourceType", t.occurred_at AS "occurredAt",
+             t.event_id AS "eventId",
+             e.title AS "eventTitle",
+             u.id AS "recorderId", u.name AS "recorderName",
+             COUNT(*) OVER()::int AS total
+      FROM transactions t
+      LEFT JOIN events e ON e.id = t.event_id
+      LEFT JOIN users u ON u.id = t.recorded_by_id
+      ${whereAll(c)}
+      ${order}
+      LIMIT ${page.take} OFFSET ${page.skip}`;
+    let total = rows[0]?.total ?? 0;
+    if (rows.length === 0 && page.skip > 0) {
+      const [{ count }] = await prisma.$queryRaw`SELECT COUNT(*)::int AS count FROM transactions t ${whereAll(c)}`;
+      total = count;
+    }
+    const data = rows.map(({ eventTitle, recorderId, recorderName, total: _total, ...row }) => ({
+      ...row,
+      event: row.eventId ? { id: row.eventId, title: eventTitle } : null,
+      recordedBy: recorderId ? { id: recorderId, name: recorderName } : null,
+    }));
+    return paginated(data, total, page);
   },
 
   async create(body, user) {
-    const [event, fundraiser] = await Promise.all([
-      body.eventId ? prisma.event.findUnique({ where: { id: body.eventId }, select: { id: true } }) : true,
-      body.fundraiserId ? prisma.fundraiser.findUnique({ where: { id: body.fundraiserId }, select: { id: true } }) : true,
-    ]);
+    const event = body.eventId ? await prisma.event.findUnique({ where: { id: body.eventId }, select: { id: true } }) : true;
     if (!event) throw badRequest('INVALID_EVENT', 'The selected event does not exist');
-    if (!fundraiser) throw badRequest('INVALID_FUNDRAISER', 'The selected fundraiser does not exist');
     const row = await recordManual(prisma, { ...body, recordedById: user.id });
     invalidateLedger();
-    cache.delByPrefix('fundraisers:');
     return row;
   },
 
@@ -170,20 +186,30 @@ export const transactionsService = {
   summary({ from, to } = {}) {
     const key = `finance:summary:${from?.toISOString() ?? ''}:${to?.toISOString() ?? ''}`;
     return cache.wrap(key, SUMMARY_TTL_SECONDS, async () => {
-      const [byCategory, byMonth, byEvent, byFundraiser] = await Promise.all([
-        categoryTotals(from, to),
-        monthlyTotals(from, to),
-        totalsBy('event', 'eventId', 'title', buildWhere({ from, to })),
-        totalsBy('fundraiser', 'fundraiserId', 'title', buildWhere({ from, to })),
-      ]);
-      const income = byCategory.filter((row) => row.type === 'INCOME').reduce((sum, row) => sum + row.amount, 0);
-      const expense = byCategory.filter((row) => row.type === 'EXPENSE').reduce((sum, row) => sum + row.amount, 0);
+      // One statement computes every breakdown from the same slice of the ledger (one database round trip instead of
+      // four queries plus two label look-ups), so the numbers also always agree with each other.
+      const [row] = await prisma.$queryRaw`
+        WITH t AS (SELECT type, category, amount, occurred_at, event_id FROM transactions WHERE ${rangeSql(from, to)})
+        SELECT
+          (SELECT COALESCE(json_agg(json_build_object('type', c.type::text, 'category', c.category::text, 'amount', c.s)), '[]'::json)
+             FROM (SELECT type, category, SUM(amount)::float8 AS s FROM t GROUP BY type, category) c) AS "byCategory",
+          (SELECT COALESCE(json_agg(json_build_object('month', m.month, 'income', m.income, 'expense', m.expense) ORDER BY m.month), '[]'::json)
+             FROM (SELECT to_char(date_trunc('month', occurred_at AT TIME ZONE 'UTC'), 'YYYY-MM') AS month,
+                          COALESCE(SUM(amount) FILTER (WHERE type = 'INCOME'), 0)::float8 AS income,
+                          COALESCE(SUM(amount) FILTER (WHERE type = 'EXPENSE'), 0)::float8 AS expense
+                     FROM t GROUP BY 1) m) AS "byMonth",
+          (SELECT COALESCE(json_agg(json_build_object('eventId', e.id, 'title', e.title, 'income', x.income, 'expense', x.expense, 'net', x.income - x.expense) ORDER BY e.title), '[]'::json)
+             FROM (SELECT event_id, COALESCE(SUM(amount) FILTER (WHERE type = 'INCOME'), 0)::float8 AS income,
+                          COALESCE(SUM(amount) FILTER (WHERE type = 'EXPENSE'), 0)::float8 AS expense
+                     FROM t WHERE event_id IS NOT NULL GROUP BY event_id) x JOIN events e ON e.id = x.event_id) AS "byEvent"`;
+      const byCategory = row.byCategory;
+      const income = byCategory.filter((r) => r.type === 'INCOME').reduce((sum, r) => sum + r.amount, 0);
+      const expense = byCategory.filter((r) => r.type === 'EXPENSE').reduce((sum, r) => sum + r.amount, 0);
       return {
-        income, expense, net: income - expense, byCategory, byMonth,
-        byEvent: byEvent.map(({ id, ...rest }) => ({ eventId: id, ...rest })),
-        byFundraiser: byFundraiser.map(({ id, ...rest }) => ({ fundraiserId: id, ...rest })),
+        income, expense, net: income - expense, byCategory, byMonth: fillMonths(row.byMonth),
+        byEvent: row.byEvent,
       };
-    });
+    }, { staleSeconds: SUMMARY_STALE_SECONDS });
   },
 
   eventReport() {

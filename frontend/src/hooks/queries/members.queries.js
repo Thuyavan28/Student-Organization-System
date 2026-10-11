@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { membersApi } from '../../api/members.api';
 
 export const membersKeys = {
@@ -11,7 +11,8 @@ export const membersKeys = {
 };
 
 export function useMembersList(params) {
-  return useQuery({ queryKey: membersKeys.list(params), queryFn: () => membersApi.list(params) });
+  // The previous page stays on screen while the next 10 load, so paging never flashes a skeleton.
+  return useQuery({ queryKey: membersKeys.list(params), queryFn: () => membersApi.list(params), placeholderData: keepPreviousData });
 }
 
 export function useMembersExpiring(params) {

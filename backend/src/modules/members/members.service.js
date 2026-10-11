@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import * as cache from '../../utils/memoryCache.js';
 import { conflict, notFound } from '../../utils/apiError.js';
@@ -36,25 +37,50 @@ function sortOrder(sort, order) {
 
 export const membersService = {
   async list(query) {
-    const page = parsePagination(query);
-    const where = {};
-    if (query.status) where.membershipStatus = query.status;
-    if (query.tierId) where.tierId = query.tierId;
+    const page = parsePagination(query, 10);
+    // One SQL statement returns the 10 rows, their user and tier, and the overall total (window count), so a page
+    // costs a single database round trip instead of separate member, user, tier and count queries.
+    const conditions = [Prisma.sql`TRUE`];
+    if (query.status) conditions.push(Prisma.sql`m.membership_status = ${query.status}::membership_status`);
+    if (query.tierId) conditions.push(Prisma.sql`m.tier_id = ${query.tierId}`);
     if (query.q) {
-      where.OR = [
-        { user: { name: { contains: query.q, mode: 'insensitive' } } },
-        { user: { email: { contains: query.q, mode: 'insensitive' } } },
-        { studentId: { contains: query.q, mode: 'insensitive' } },
-      ];
+      const like = `%${query.q.replace(/[\\%_]/g, '\\$&')}%`;
+      conditions.push(Prisma.sql`(u.name ILIKE ${like} OR u.email ILIKE ${like} OR m.student_id ILIKE ${like})`);
     }
-    // Short cache: repeat visits and paging back and forth skip the slow database round trips.
+    // Column and direction come from fixed whitelists, never from user text.
+    const column = { name: 'u.name', joinedAt: 'm.joined_at', expiresAt: 'm.expires_at', studentId: 'm.student_id' }[query.sort] ?? 'u.name';
+    const direction = query.order === 'desc' ? 'DESC' : 'ASC';
+    const orderBy = Prisma.raw(`${column} ${direction}, m.id ASC`);
+
+    // Short cache: repeat visits and paging back and forth skip the slow database round trip.
     // Every member write calls invalidateMembers(), which drops these entries.
     return cache.wrap(`members:list:${JSON.stringify([query.status, query.tierId, query.q, query.sort, query.order, page.skip, page.take])}`, LIST_TTL_SECONDS, async () => {
-      const [rows, total] = await Promise.all([
-        prisma.member.findMany({ where, select: listSelect, orderBy: sortOrder(query.sort, query.order), skip: page.skip, take: page.take }),
-        prisma.member.count({ where }),
-      ]);
-      return paginated(rows.map(present), total, page);
+      const rows = await prisma.$queryRaw`
+        SELECT m.id, m.user_id AS "userId", m.student_id AS "studentId", m.department, m.year, m.phone,
+               m.tier_id AS "tierId", m.membership_status::text AS "membershipStatus",
+               m.joined_at AS "joinedAt", m.expires_at AS "expiresAt", m.dues_paid AS "duesPaid",
+               u.name AS "userName", u.email AS "userEmail", t.name AS "tierName",
+               COUNT(*) OVER()::int AS "total"
+        FROM members m
+        JOIN users u ON u.id = m.user_id
+        JOIN membership_tiers t ON t.id = m.tier_id
+        WHERE ${Prisma.join(conditions, ' AND ')}
+        ORDER BY ${orderBy}
+        LIMIT ${page.take} OFFSET ${page.skip}`;
+      let total = rows[0]?.total ?? 0;
+      // A page past the end returns no rows, so the window count is missing; fall back to a plain count.
+      if (rows.length === 0 && page.skip > 0) {
+        const [{ count }] = await prisma.$queryRaw`
+          SELECT COUNT(*)::int AS count FROM members m JOIN users u ON u.id = m.user_id
+          WHERE ${Prisma.join(conditions, ' AND ')}`;
+        total = count;
+      }
+      const data = rows.map(({ userName, userEmail, tierName, total: _total, ...row }) => present({
+        ...row,
+        user: { id: row.userId, name: userName, email: userEmail },
+        tier: { id: row.tierId, name: tierName },
+      }));
+      return paginated(data, total, page);
     });
   },
 
@@ -74,14 +100,15 @@ export const membersService = {
     return cache.wrap('members:stats', STATS_TTL_SECONDS, async () => {
       const now = new Date();
       const soon = new Date(now.getTime() + REMINDER_WINDOW_DAYS * DAY_MS);
-      const [total, active, expiringSoon, expired, pending] = await Promise.all([
-        prisma.member.count(),
-        prisma.member.count({ where: { membershipStatus: 'ACTIVE', expiresAt: { gt: now } } }),
-        prisma.member.count({ where: { membershipStatus: 'ACTIVE', expiresAt: { gt: now, lte: soon } } }),
-        prisma.member.count({ where: { membershipStatus: 'EXPIRED' } }),
-        prisma.member.count({ where: { membershipStatus: 'PENDING' } }),
-      ]);
-      return { total, active, expiringSoon, expired, pending };
+      // One statement and one connection instead of five queries at once (each extra connection can cost seconds when cold).
+      const [row] = await prisma.$queryRaw`
+        SELECT COUNT(*)::int AS total,
+               COUNT(*) FILTER (WHERE membership_status = 'ACTIVE' AND expires_at > ${now})::int AS active,
+               COUNT(*) FILTER (WHERE membership_status = 'ACTIVE' AND expires_at > ${now} AND expires_at <= ${soon})::int AS "expiringSoon",
+               COUNT(*) FILTER (WHERE membership_status = 'EXPIRED')::int AS expired,
+               COUNT(*) FILTER (WHERE membership_status = 'PENDING')::int AS pending
+        FROM members`;
+      return row;
     });
   },
 

@@ -1,5 +1,5 @@
 import {
-  LuUsers, LuCalendar, LuSquareCheck, LuBell, LuShoppingBag, LuPackage, LuHeart,
+  LuUsers, LuCalendar, LuSquareCheck, LuBell, LuShoppingBag, LuPackage, LuClipboardList,
   LuDollarSign, LuFileText, LuAward, LuSettings, LuUser, LuTag, LuClipboard, LuLayoutDashboard, LuUserCog,
 } from 'react-icons/lu';
 
@@ -56,11 +56,10 @@ export const MEMBERSHIP_STATUSES = ['PENDING', 'ACTIVE', 'EXPIRED', 'CANCELLED']
 export const EVENT_STATUSES = ['DRAFT', 'PUBLISHED', 'COMPLETED', 'CANCELLED'];
 export const EXPENSE_STATUSES = ['SUBMITTED', 'APPROVED', 'REJECTED', 'REIMBURSED'];
 export const ORDER_STATUSES = ['PLACED', 'PAID', 'FULFILLED', 'CANCELLED'];
-export const FUNDRAISER_STATUSES = ['PLANNING', 'ACTIVE', 'COMPLETED', 'CANCELLED'];
 export const TASK_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
 export const TXN_TYPES = ['INCOME', 'EXPENSE'];
 export const TXN_CATEGORIES = [
-  'DUES', 'TICKETS', 'MERCHANDISE', 'FUNDRAISER', 'DONATION', 'VENUE', 'FOOD',
+  'DUES', 'TICKETS', 'MERCHANDISE', 'DONATION', 'VENUE', 'FOOD',
   'SUPPLIES', 'MARKETING', 'REIMBURSEMENT', 'OTHER',
 ];
 export const EXPENSE_CATEGORIES = ['VENUE', 'FOOD', 'SUPPLIES', 'MARKETING', 'OTHER'];
@@ -96,8 +95,8 @@ export const ADMIN_NAV = [
   { to: '/admin/announcements', label: 'Announcements', icon: LuBell, roles: [ROLES.ADMIN] },
   { to: '/admin/merchandise', label: 'Merchandise', icon: LuPackage, roles: [ROLES.ADMIN] },
   { to: '/admin/orders', label: 'Orders', icon: LuShoppingBag, roles: [ROLES.ADMIN, ROLES.TREASURER] },
-  { to: '/admin/fundraisers', label: 'Fundraisers', icon: LuHeart, roles: [ROLES.ADMIN, ROLES.TREASURER, ROLES.VOLUNTEER] },
-  { to: '/admin/finance', label: 'Finance', icon: LuDollarSign, roles: [ROLES.ADMIN, ROLES.TREASURER] },
+  { to: '/admin/tasks', label: 'Tasks', icon: LuClipboardList, roles: [ROLES.ADMIN, ROLES.TREASURER, ROLES.VOLUNTEER] },
+  { to: '/admin/finance', label: 'Finance', icon: LuDollarSign, roles: [ROLES.ADMIN, ROLES.TREASURER, ROLES.VOLUNTEER] },
   { to: '/admin/expenses', label: 'Expenses', icon: LuFileText, roles: [ROLES.ADMIN, ROLES.TREASURER] },
   { to: '/admin/leadership', label: 'Leadership', icon: LuAward, roles: [ROLES.ADMIN, ROLES.TREASURER] },
   { to: '/admin/settings', label: 'Settings', icon: LuSettings, roles: [ROLES.ADMIN] },

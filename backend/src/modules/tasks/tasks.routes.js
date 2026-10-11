@@ -11,6 +11,8 @@ const staff = requireRole('ADMIN', 'TREASURER', 'VOLUNTEER');
 
 tasksRouter.use(auth);
 
+tasksRouter.get('/overview', staff, tasksController.overview);
 tasksRouter.get('/', staff, validate({ query: listTasksQuery }), tasksController.list);
 tasksRouter.post('/', requireRole('ADMIN'), validate({ body: createTaskSchema }), tasksController.create);
 tasksRouter.patch('/:id', staff, validate({ params: taskIdParam, body: updateTaskSchema }), tasksController.update);
+tasksRouter.delete('/:id', requireRole('ADMIN'), validate({ params: taskIdParam }), tasksController.remove);

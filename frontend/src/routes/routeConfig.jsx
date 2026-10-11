@@ -34,8 +34,7 @@ const CheckIn = lazyPage(() => import('../pages/admin/CheckIn'));
 const AdminAnnouncements = lazyPage(() => import('../pages/admin/Announcements'));
 const Merchandise = lazyPage(() => import('../pages/admin/Merchandise'));
 const Orders = lazyPage(() => import('../pages/admin/Orders'));
-const Fundraisers = lazyPage(() => import('../pages/admin/Fundraisers'));
-const FundraiserDetail = lazyPage(() => import('../pages/admin/FundraiserDetail'));
+const Tasks = lazyPage(() => import('../pages/admin/Tasks'));
 const Finance = lazyPage(() => import('../pages/admin/finance'));
 const Expenses = lazyPage(() => import('../pages/admin/Expenses'));
 const Leadership = lazyPage(() => import('../pages/admin/Leadership'));
@@ -71,9 +70,8 @@ export const appRoutes = [
   { path: '/admin/announcements', Component: AdminAnnouncements, roles: [ADMIN] },
   { path: '/admin/merchandise', Component: Merchandise, roles: [ADMIN] },
   { path: '/admin/orders', Component: Orders, roles: [ADMIN, TREASURER] },
-  { path: '/admin/fundraisers', Component: Fundraisers, roles: [ADMIN, TREASURER, VOLUNTEER] },
-  { path: '/admin/fundraisers/:id', Component: FundraiserDetail, roles: [ADMIN, TREASURER, VOLUNTEER] },
-  { path: '/admin/finance', Component: Finance, roles: [ADMIN, TREASURER] },
+  { path: '/admin/tasks', Component: Tasks, roles: [ADMIN, TREASURER, VOLUNTEER] },
+  { path: '/admin/finance', Component: Finance, roles: [ADMIN, TREASURER, VOLUNTEER] },
   { path: '/admin/expenses', Component: Expenses, roles: [ADMIN, TREASURER] },
   { path: '/admin/leadership', Component: Leadership, roles: [ADMIN, TREASURER] },
   { path: '/admin/settings', Component: Settings, roles: [ADMIN] },

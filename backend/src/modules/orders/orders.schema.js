@@ -7,6 +7,7 @@ export const MAX_LINES = 10;
 export const MAX_QUANTITY = 10;
 
 export const createOrderSchema = z.object({
+  paymentSessionId: z.string().min(1).max(64).optional(),
   items: z
     .array(
       z.object({

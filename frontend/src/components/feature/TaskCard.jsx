@@ -1,43 +1,40 @@
-import { LuTriangleAlert, LuCalendar, LuUser } from 'react-icons/lu';
+import { LuCalendar, LuPencil, LuTriangleAlert, LuUser } from 'react-icons/lu';
 import { TASK_STATUSES, humanize } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
 import Badge from '../ui/Badge';
 
 export function isOverdue(task) {
   if (!task.dueDate || task.status === 'COMPLETED') return false;
-  const due = new Date(task.dueDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return due.getTime() < today.getTime();
+  return new Date(task.dueDate).getTime() < Date.now();
 }
 
-export default function TaskCard({ task, onStatusChange, onEdit, canChangeStatus = true }) {
+// One task. The assignee (or an admin) can move it between columns with the status picker; only an admin can edit it.
+export default function TaskCard({ task, onStatusChange, onEdit, canChangeStatus = true, showEvent = true }) {
   const overdue = isOverdue(task);
-
   return (
-    <article
-      className={`rounded-lg border bg-white p-3 shadow-sm ${overdue ? 'border-red-300 ring-1 ring-red-100' : 'border-slate-200'}`}
-    >
+    <article className={`rounded-2xl border bg-white p-4 transition-shadow hover:shadow-md ${overdue ? 'border-cf-accent' : 'border-cf-border'}`}>
       <div className="flex items-start justify-between gap-2">
-        <h4 className="text-sm font-medium text-slate-900">{task.title}</h4>
+        <h4 className="text-sm font-semibold text-cf-fg">{task.title}</h4>
         {overdue && (
           <Badge tone="red">
             <LuTriangleAlert className="mr-1 h-3 w-3" aria-hidden="true" /> Overdue
           </Badge>
         )}
       </div>
-      <ul className="mt-2 space-y-1 text-xs text-slate-600">
+      {showEvent && <p className="mt-1 text-xs text-cf-muted">{task.event?.title ?? 'General club task'}</p>}
+      {task.description && <p className="mt-2 line-clamp-2 text-xs text-cf-muted">{task.description}</p>}
+      <ul className="mt-3 space-y-1 text-xs text-cf-fg">
         <li className="flex items-center gap-1.5">
-          <LuUser aria-hidden="true" /> {task.assignee?.name ?? 'Unassigned'}
+          <LuUser className="h-3.5 w-3.5 text-cf-muted" aria-hidden="true" /> {task.assignee?.name ?? 'Unassigned'}
         </li>
         <li className="flex items-center gap-1.5">
-          <LuCalendar aria-hidden="true" /> {task.dueDate ? `Due ${formatDate(task.dueDate)}` : 'No due date'}
+          <LuCalendar className="h-3.5 w-3.5 text-cf-muted" aria-hidden="true" /> {task.dueDate ? `Due ${formatDate(task.dueDate)}` : 'No due date'}
         </li>
       </ul>
       <div className="mt-3 flex items-center gap-2">
         <select
           aria-label={`Status of ${task.title}`}
-          className="input-base !py-1 !text-xs"
+          className="select-base !py-1.5 !text-xs"
           value={task.status}
           disabled={!canChangeStatus}
           onChange={(event) => onStatusChange(task, event.target.value)}
@@ -49,8 +46,8 @@ export default function TaskCard({ task, onStatusChange, onEdit, canChangeStatus
           ))}
         </select>
         {onEdit && (
-          <button type="button" className="text-xs font-medium text-primary-700 hover:underline" onClick={() => onEdit(task)}>
-            Edit
+          <button type="button" aria-label={`Edit ${task.title}`} className="rounded-xl border border-cf-border p-2 text-cf-fg transition-colors hover:bg-cf-hover" onClick={() => onEdit(task)}>
+            <LuPencil className="h-3.5 w-3.5" />
           </button>
         )}
       </div>

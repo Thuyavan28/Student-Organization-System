@@ -15,11 +15,11 @@ import {
   LuCreditCard,
   LuCheck,
   LuArrowRight,
+  LuClipboardList,
   LuBell,
   LuClipboard,
   LuDollarSign,
   LuFileText,
-  LuHeart,
   LuLayoutDashboard,
   LuPackage,
   LuSettings,
@@ -176,6 +176,7 @@ const STAFF_WORKSPACE = {
       { to: '/admin/staff', icon: LuUserCog, title: 'Staff accounts', text: 'Create treasurer and volunteer logins' },
       { to: '/admin/members', icon: LuUsers, title: 'Members', text: 'Memberships, dues and tiers' },
       { to: '/admin/events', icon: LuCalendar, title: 'Events', text: 'Plan events and watch ticket sales' },
+      { to: '/admin/tasks', icon: LuClipboardList, title: 'Tasks', text: 'Assign event duties to volunteers' },
       { to: '/admin/announcements', icon: LuBell, title: 'Announcements', text: 'Message every member' },
       { to: '/admin/merchandise', icon: LuPackage, title: 'Merchandise', text: 'Products, sizes and stock' },
       { to: '/admin/finance', icon: LuDollarSign, title: 'Finance', text: 'Ledger, reports and exports' },
@@ -189,15 +190,15 @@ const STAFF_WORKSPACE = {
       { to: '/admin/finance', icon: LuDollarSign, title: 'Finance', text: 'Ledger, analytics and exports' },
       { to: '/admin/expenses', icon: LuFileText, title: 'Expenses', text: 'Review reimbursement claims' },
       { to: '/admin/orders', icon: LuShoppingBag, title: 'Orders', text: 'Merchandise orders and refunds' },
+      { to: '/admin/tasks', icon: LuClipboardList, title: 'Tasks', text: 'See what is on track' },
       { to: '/admin/members', icon: LuUsers, title: 'Members', text: 'Dues and membership status' },
-      { to: '/admin/fundraisers', icon: LuHeart, title: 'Fundraisers', text: 'Campaign progress' },
     ],
   },
   VOLUNTEER: {
-    summary: 'You help on the day: check guests in, work on fundraiser tasks and claim expenses.',
+    summary: 'You help on the day: check guests in, finish your tasks and claim expenses.',
     links: [
       { to: '/admin/check-in', icon: LuSquareCheck, title: 'Check-in', text: 'Scan tickets at the door' },
-      { to: '/admin/fundraisers', icon: LuHeart, title: 'Fundraisers', text: 'Your assigned tasks' },
+      { to: '/admin/tasks', icon: LuClipboardList, title: 'My tasks', text: 'Your assigned event duties' },
       { to: '/me/expenses', icon: LuClipboard, title: 'My expense claims', text: 'Claim money you spent for the club' },
     ],
   },
@@ -268,7 +269,7 @@ function RenewModal({ open, tiers, currentTierId, onClose, onRenewed }) {
     >
       <div className="space-y-4">
         <p className="text-xs text-cf-muted leading-relaxed">
-          Renewing extends your current expiry date by 12 months, preserving your uninterrupted membership benefits and discounts.
+          Renewing extends your membership to the end of the next membership year, so your benefits and discounts carry on without a break.
         </p>
         <TierPicker tiers={tiers} value={tierId} onChange={setTierId} />
       </div>

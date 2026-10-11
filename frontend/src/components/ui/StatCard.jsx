@@ -1,4 +1,8 @@
-export default function StatCard({ label, value, sub, icon: Icon, tone }) {
+import Spinner from './Spinner';
+
+// `loading` shows a small spinner where the number goes (the label and caption stay visible), so a card that is
+// still waiting for data never shows a misleading 0.
+export default function StatCard({ label, value, sub, icon: Icon, tone, loading = false }) {
   const toneClass = {
     default: 'text-cf-fg',
     success: 'text-cf-success',
@@ -20,7 +24,13 @@ export default function StatCard({ label, value, sub, icon: Icon, tone }) {
         <p className="text-sm font-medium text-cf-fg">{label}</p>
         {Icon && <Icon className={`h-4 w-4 shrink-0 ${tone && tone !== 'default' ? toneClass : 'text-cf-fg'}`} aria-hidden="true" />}
       </div>
-      <p className={`text-stat-value tabular-nums ${toneClass}`}>{displayValue}</p>
+      {loading ? (
+        <div className="flex h-8 items-center text-cf-fg" aria-busy="true">
+          <Spinner size="md" label={`Loading ${label}`} />
+        </div>
+      ) : (
+        <p className={`text-stat-value tabular-nums ${toneClass}`}>{displayValue}</p>
+      )}
       {sub && <p className="mt-1 text-xs text-cf-muted">{sub}</p>}
     </div>
   );

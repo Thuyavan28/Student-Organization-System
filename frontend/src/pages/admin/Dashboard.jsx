@@ -11,7 +11,6 @@ import StatCard from '../../components/ui/StatCard';
 import PageHeader from '../../components/ui/PageHeader';
 import DataCard, { DataCardBody } from '../../components/ui/DataCard';
 import Badge from '../../components/ui/Badge';
-import StatCardSkeleton from '../../components/ui/skeletons/StatCardSkeleton';
 import ChartSkeleton from '../../components/ui/skeletons/ChartSkeleton';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
@@ -139,7 +138,6 @@ function StatsSection() {
   const { data: raw, isLoading, error, refetch } = useDashboardSummary();
   const d = raw?.data;
 
-  if (isLoading) return <StatCardSkeleton count={4} />;
   if (error) return <ErrorState error={error.message} onRetry={refetch} />;
 
   const balance = d?.finance?.balance ?? 0;
@@ -147,14 +145,15 @@ function StatsSection() {
   return (
     <>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        <StatCard label="Total members" value={d?.members?.total ?? 0} icon={LuUsers} />
-        <StatCard label="Active members" value={d?.members?.active ?? 0} icon={LuUsers} tone="success" />
-        <StatCard label="Tickets sold" value={d?.ticketsSold ?? 0} icon={LuTicket} />
+        <StatCard label="Total members" value={d?.members?.total ?? 0} icon={LuUsers} loading={isLoading} />
+        <StatCard label="Active members" value={d?.members?.active ?? 0} icon={LuUsers} tone="success" loading={isLoading} />
+        <StatCard label="Tickets sold" value={d?.ticketsSold ?? 0} icon={LuTicket} loading={isLoading} />
         <StatCard
           label="Balance"
           value={formatCurrency(balance)}
           icon={balance >= 0 ? LuTrendingUp : LuTrendingDown}
           tone={balance >= 0 ? 'success' : 'danger'}
+          loading={isLoading}
         />
       </div>
 

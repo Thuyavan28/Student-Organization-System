@@ -4,6 +4,7 @@ import { conflict, forbidden, notFound } from '../../utils/apiError.js';
 import * as cache from '../../utils/memoryCache.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
 import { membershipsService } from '../memberships/memberships.service.js';
+import { paymentsService } from '../payments/payments.service.js';
 import { notificationsService } from '../notifications/notifications.service.js';
 import { ticketsService } from '../tickets/tickets.service.js';
 
@@ -33,7 +34,7 @@ function assertBookable(event, now) {
 // A long maxWait lets a burst of simultaneous bookings (a ticket release) wait its turn instead of failing.
 const BOOKING_TX_OPTIONS = { maxWait: 120000, timeout: 120000 };
 
-async function createBooking(eventId, userId) {
+async function createBooking(eventId, userId, proof) {
   const now = new Date();
   // Read before the lock so the time spent holding it covers only what must be serialised.
   const member = await prisma.member.findUnique({ where: { userId } });
@@ -59,6 +60,8 @@ async function createBooking(eventId, userId) {
     if (existing) throw conflict('ALREADY_BOOKED', 'You already have a ticket for this event');
 
     const { price, discount, isMemberPrice } = priceFor(event, isMember);
+    // The payment must cover exactly this price. Checked before anything is written; released again if the booking fails.
+    proof.claim(price);
 
     const booking = await tx.booking.create({
       data: {
@@ -117,8 +120,16 @@ function invalidateBookingCaches() {
   cache.delByPrefix('finance:');
 }
 
-async function createBookingAndNotify(eventId, userId) {
-  const result = await createBooking(eventId, userId);
+async function createBookingAndNotify(eventId, userId, paymentSessionId) {
+  const proof = paymentsService.proofFor(paymentSessionId, userId);
+  let result;
+  try {
+    result = await createBooking(eventId, userId, proof);
+    proof.done();
+  } catch (error) {
+    proof.fail();
+    throw error;
+  }
   invalidateBookingCaches();
   // Sent after the booking is saved and not awaited, so mail never delays the seat race or fails the booking.
   if (env.NODE_ENV !== 'test') notificationsService.ticketBooked(result);
@@ -133,13 +144,33 @@ export const bookingsService = {
     return result;
   },
 
+  // One SQL statement: my bookings with their event, ticket and the total count.
   async listMine(userId, query) {
     const page = parsePagination(query, 10);
-    const where = { userId };
-    const [rows, total] = await Promise.all([
-      prisma.booking.findMany({ where, include: bookingInclude, orderBy: { createdAt: 'desc' }, skip: page.skip, take: page.take }),
-      prisma.booking.count({ where }),
-    ]);
-    return paginated(rows, total, page);
+    const rows = await prisma.$queryRaw`
+      SELECT b.id, b.event_id AS "eventId", b.user_id AS "userId", b.price_at_booking AS "priceAtBooking",
+             b.discount_applied AS "discountApplied", b.is_member_price AS "isMemberPrice",
+             b.status::text AS status, b.payment_status::text AS "paymentStatus", b.payment_mode::text AS "paymentMode",
+             b.created_at AS "createdAt", b.updated_at AS "updatedAt",
+             e.title AS "eventTitle", e.venue AS "eventVenue", e.start_at AS "eventStartAt", e.end_at AS "eventEndAt", e.status::text AS "eventStatus",
+             t.id AS "ticketId", t.token AS "ticketToken", t.status::text AS "ticketStatus",
+             COUNT(*) OVER()::int AS "totalRows"
+      FROM bookings b
+      JOIN events e ON e.id = b.event_id
+      LEFT JOIN tickets t ON t.booking_id = b.id
+      WHERE b.user_id = ${userId}
+      ORDER BY b.created_at DESC, b.id DESC
+      LIMIT ${page.take} OFFSET ${page.skip}`;
+    let total = rows[0]?.totalRows ?? 0;
+    if (rows.length === 0 && page.skip > 0) {
+      const [{ count }] = await prisma.$queryRaw`SELECT COUNT(*)::int AS count FROM bookings WHERE user_id = ${userId}`;
+      total = count;
+    }
+    const data = rows.map(({ eventTitle, eventVenue, eventStartAt, eventEndAt, eventStatus, ticketId, ticketToken, ticketStatus, totalRows: _t, ...row }) => ({
+      ...row,
+      event: { id: row.eventId, title: eventTitle, venue: eventVenue, startAt: eventStartAt, endAt: eventEndAt, status: eventStatus },
+      ticket: ticketId ? { id: ticketId, token: ticketToken, status: ticketStatus } : null,
+    }));
+    return paginated(data, total, page);
   },
 };

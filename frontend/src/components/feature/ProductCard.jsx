@@ -28,7 +28,7 @@ function resolveProductImage(product) {
   return '/images/products/skyline-hoodie.jpg';
 }
 
-export default function ProductCard({ product, onAdd }) {
+export default function ProductCard({ product, onAdd, priority = false }) {
   const [variantId, setVariantId] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
@@ -55,7 +55,12 @@ export default function ProductCard({ product, onAdd }) {
           alt={product.name}
           onError={() => setImageError(true)}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
+          width="800"
+          height="600"
+          decoding="async"
+          // The first row is on screen at load, so it is fetched right away; the rest wait until scrolled near.
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
         />
 
         {/* Floating Top Badges */}

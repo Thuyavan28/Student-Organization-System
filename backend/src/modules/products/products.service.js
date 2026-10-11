@@ -1,10 +1,13 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
+import { whereAll } from '../../utils/sql.js';
 import { notFound } from '../../utils/apiError.js';
 import * as cache from '../../utils/memoryCache.js';
 import { applyPercentDiscount } from '../../utils/money.js';
 import { membershipsService } from '../memberships/memberships.service.js';
 
 const PRODUCTS_TTL_SECONDS = 60;
+const PRODUCTS_STALE_SECONDS = 30; // served instantly while one request refreshes it in the background
 
 function invalidateProducts() {
   cache.delByPrefix('products:');
@@ -27,11 +30,16 @@ export const productsService = {
     // Cache the base product list for public requests. Member discount is applied after, so the
     // cache does not contain any user-specific pricing.
     const baseProducts = await cache.wrap(`products:list:${showAll}`, PRODUCTS_TTL_SECONDS, () =>
-      prisma.product.findMany({
-        where: showAll ? {} : { isActive: true },
-        include: { variants: variantSelect },
-        orderBy: { id: 'asc' },
-      }),
+      // One statement: every product with its size variants as JSON.
+      prisma.$queryRaw`
+        SELECT p.id, p.name, p.description, p.base_price AS "basePrice", p.image_url AS "imageUrl", p.is_active AS "isActive",
+               p.created_at AS "createdAt", p.updated_at AS "updatedAt",
+               COALESCE((SELECT json_agg(json_build_object('id', v.id, 'size', v.size::text, 'stock', v.stock, 'sku', v.sku) ORDER BY v.id)
+                         FROM product_variants v WHERE v.product_id = p.id), '[]'::json) AS variants
+        FROM products p
+        ${showAll ? Prisma.empty : Prisma.sql`WHERE p.is_active = TRUE`}
+        ORDER BY p.id ASC`,
+      { staleSeconds: PRODUCTS_STALE_SECONDS },
     );
 
     // The member discount comes from the viewer's active tier, so prices shown match checkout.

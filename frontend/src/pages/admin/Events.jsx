@@ -174,7 +174,7 @@ export default function Events() {
   const q = useDebounce(search);
 
   // Fetch full stats summary for KPI cards
-  const { data: globalEventsData, reload: reloadGlobal } = useFetch(
+  const { data: globalEventsData, loading: statsLoading, reload: reloadGlobal } = useFetch(
     () => eventsApi.list({ pageSize: 100 }),
     [],
     { key: 'admin-events-global' },
@@ -234,11 +234,11 @@ export default function Events() {
 
       {/* Top Event KPI Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard label="Total events" value={totalEvents} sub="All campus events" icon={LuCalendar} />
-        <StatCard label="Published / live" value={publishedEvents} sub="Open for ticket booking" icon={LuClock} />
-        <StatCard label="Completed" value={completedEvents} sub="Past campus events" icon={LuCheckCheck} />
-        <StatCard label="Tickets sold" value={totalTicketsSold} sub="Confirmed seats booked" icon={LuTicket} />
-        <StatCard label="Drafts" value={draftEvents} sub="Unpublished planning" icon={LuFilePen} />
+        <StatCard label="Total events" value={totalEvents} sub="All campus events" icon={LuCalendar} loading={statsLoading && !globalEventsData} />
+        <StatCard label="Published / live" value={publishedEvents} sub="Open for ticket booking" icon={LuClock} loading={statsLoading && !globalEventsData} />
+        <StatCard label="Completed" value={completedEvents} sub="Past campus events" icon={LuCheckCheck} loading={statsLoading && !globalEventsData} />
+        <StatCard label="Tickets sold" value={totalTicketsSold} sub="Confirmed seats booked" icon={LuTicket} loading={statsLoading && !globalEventsData} />
+        <StatCard label="Drafts" value={draftEvents} sub="Unpublished planning" icon={LuFilePen} loading={statsLoading && !globalEventsData} />
       </div>
 
       {/* Main Events Table Card */}

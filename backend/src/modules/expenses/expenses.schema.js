@@ -12,7 +12,6 @@ export const createExpenseSchema = z.object({
   amount: z.coerce.number().int().min(1).max(100_000_000),
   description: z.string().trim().min(3).max(300),
   eventId: optionalId,
-  fundraiserId: optionalId,
 });
 
 export const myExpensesQuery = z.object({ ...paginationShape });

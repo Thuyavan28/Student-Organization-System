@@ -8,11 +8,13 @@ export const MAX_PAGE_SIZE = 100;
 export const paginationShape = {
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).transform((value) => Math.min(value, MAX_PAGE_SIZE)).optional(),
+  // `limit` is accepted as another name for pageSize.
+  limit: z.coerce.number().int().min(1).transform((value) => Math.min(value, MAX_PAGE_SIZE)).optional(),
 };
 
 export function parsePagination(query = {}, defaultSize = DEFAULT_PAGE_SIZE) {
   const page = Math.max(1, Number(query.page) || 1);
-  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(query.pageSize) || defaultSize));
+  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(query.pageSize ?? query.limit) || defaultSize));
   return { page, pageSize, skip: (page - 1) * pageSize, take: pageSize };
 }
 

@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 import { env } from '../../config/env.js';
 import { prisma } from '../../config/prisma.js';
-import { sendEmail } from '../../utils/mailer.js';
+import { isMailConfigured, sendEmail } from '../../utils/mailer.js';
 
 const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
@@ -35,6 +35,7 @@ function layout({ heading, intro, rows, qrCaption, footer }) {
 export const notificationsService = {
   // `order` is the saved order including `user` and `items` (with variant and product).
   async orderPlaced(order) {
+    if (!isMailConfigured()) return; // nothing would be sent, so skip the (CPU heavy) QR code and message building
     try {
       const { user, items } = order;
       if (!user?.email) return;
@@ -70,6 +71,7 @@ export const notificationsService = {
 
   // `booking` and `ticket` are the rows created by the booking transaction. The QR carries only the ticket token.
   async ticketBooked({ booking, ticket }) {
+    if (!isMailConfigured()) return;
     try {
       const [user, event] = await Promise.all([
         prisma.user.findUnique({ where: { id: booking.userId }, select: { name: true, email: true } }),

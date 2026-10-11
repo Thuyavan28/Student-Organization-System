@@ -169,7 +169,7 @@ function download(content, filename, type = 'text/csv;charset=utf-8') {
   URL.revokeObjectURL(url);
 }
 
-export default function FinanceAnalytics() {
+export default function FinanceAnalytics({ canExport = true }) {
   const toast = useToast();
   const [period, setPeriod] = useState('6m');
   const [exporting, setExporting] = useState('');
@@ -193,8 +193,7 @@ export default function FinanceAnalytics() {
     const events = [...summary.byEvent]
       .sort((a, b) => b.net - a.net)
       .map((e) => ({ name: e.title, value: e.net, income: e.income, expense: e.expense, fill: e.net >= 0 ? INCOME : EXPENSE }));
-    const fundraisers = summary.byFundraiser.map((f) => ({ name: f.title, income: f.income, expense: f.expense }));
-    return { months, incomeCats: cats('INCOME'), expenseCats: cats('EXPENSE'), events, fundraisers };
+    return { months, incomeCats: cats('INCOME'), expenseCats: cats('EXPENSE'), events };
   }, [summary]);
 
   const insights = useMemo(() => {
@@ -253,7 +252,6 @@ export default function FinanceAnalytics() {
     section('Income by category', ['Category', 'Amount (Rs)'], view.incomeCats.map((c) => [c.name, rs(c.value)]));
     section('Expense by category', ['Category', 'Amount (Rs)'], view.expenseCats.map((c) => [c.name, rs(c.value)]));
     section('By event', ['Event', 'Income (Rs)', 'Expense (Rs)', 'Net (Rs)'], view.events.map((e) => [e.name, rs(e.income), rs(e.expense), rs(e.value)]));
-    section('By fundraiser', ['Fundraiser', 'Raised (Rs)', 'Spent (Rs)'], view.fundraisers.map((f) => [f.name, rs(f.income), rs(f.expense)]));
     download(`﻿${lines.join('\r\n')}`, `finance-report-${period}-${Date.now()}.csv`);
   });
 
@@ -328,7 +326,7 @@ export default function FinanceAnalytics() {
             </div>
           </ChartCard>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6">
             <ChartCard
               title="Net balance over time"
               subtitle="Running total: income minus expense"
@@ -351,34 +349,6 @@ export default function FinanceAnalytics() {
                     <Tooltip content={<ChartTooltip />} />
                     <Area type="monotone" dataKey="cumulative" name="Running net" stroke={INK} strokeWidth={2} fill={INK} fillOpacity={0.08} dot={false} activeDot={{ r: 5, stroke: '#fff', strokeWidth: 2 }} />
                   </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-
-            <ChartCard
-              title="Raised vs spent by fundraiser"
-              subtitle="Campaign income against campaign costs"
-              legend={[{ label: 'Raised', color: INCOME }, { label: 'Spent', color: EXPENSE }]}
-              empty={!view.fundraisers.length}
-              table={{
-                columns: [
-                  { key: 'name', label: 'Fundraiser' },
-                  { key: 'income', label: 'Raised', right: true, render: (r) => formatCurrency(r.income) },
-                  { key: 'expense', label: 'Spent', right: true, render: (r) => formatCurrency(r.expense) },
-                ],
-                rows: view.fundraisers,
-              }}
-            >
-              <div className="h-64" role="img" aria-label="Raised compared with spent for each fundraiser">
-                <ResponsiveContainer>
-                  <BarChart data={view.fundraisers} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barGap={2} barCategoryGap="28%">
-                    <CartesianGrid stroke={GRID} vertical={false} />
-                    <XAxis dataKey="name" {...axisProps} interval={0} tickFormatter={(v) => (v.length > 12 ? `${v.slice(0, 11)}...` : v)} />
-                    <YAxis {...axisProps} width={44} tickFormatter={rupeesShort} />
-                    <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(9,9,11,0.04)' }} />
-                    <Bar dataKey="income" name="Raised" fill={INCOME} maxBarSize={MAX_BAR} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" name="Spent" fill={EXPENSE} maxBarSize={MAX_BAR} radius={[4, 4, 0, 0]} />
-                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </ChartCard>
@@ -439,28 +409,30 @@ export default function FinanceAnalytics() {
       )}
 
       {/* Export at the end of the screen */}
-      <DataCard title="Export and reports" subtitle={`Everything below uses the selected period: ${periodLabel}`} className="no-print">
-        <DataCardBody>
-          <div className="grid gap-4 md:grid-cols-3">
-            {[
-              { key: 'summary', icon: LuFileSpreadsheet, title: 'Summary report (CSV)', text: 'Totals, months, categories, events and fundraisers in one spreadsheet.', action: exportSummary },
-              { key: 'ledger', icon: LuDownload, title: 'Full ledger (CSV)', text: 'Every transaction in the period, ready for your accountant.', action: exportLedger },
-              { key: 'print', icon: LuPrinter, title: 'Print or save as PDF', text: 'A clean copy of this page with the charts. Choose "Save as PDF" in the print dialog.', action: () => window.print() },
-            ].map((item) => (
-              <div key={item.key} className="flex flex-col justify-between rounded-2xl border border-cf-border p-5">
-                <div>
-                  <item.icon className="mb-3 h-6 w-6" aria-hidden="true" />
-                  <h3 className="text-base font-semibold text-cf-fg">{item.title}</h3>
-                  <p className="mt-1 text-sm text-cf-muted">{item.text}</p>
+      {canExport && (
+        <DataCard title="Export and reports" subtitle={`Everything below uses the selected period: ${periodLabel}`} className="no-print">
+          <DataCardBody>
+            <div className="grid gap-4 md:grid-cols-3">
+              {[
+                { key: 'summary', icon: LuFileSpreadsheet, title: 'Summary report (CSV)', text: 'Totals, months, categories, and events in one spreadsheet.', action: exportSummary },
+                { key: 'ledger', icon: LuDownload, title: 'Full ledger (CSV)', text: 'Every transaction in the period, ready for your accountant.', action: exportLedger },
+                { key: 'print', icon: LuPrinter, title: 'Print or save as PDF', text: 'A clean copy of this page with the charts. Choose "Save as PDF" in the print dialog.', action: () => window.print() },
+              ].map((item) => (
+                <div key={item.key} className="flex flex-col justify-between rounded-2xl border border-cf-border p-5">
+                  <div>
+                    <item.icon className="mb-3 h-6 w-6" aria-hidden="true" />
+                    <h3 className="text-base font-semibold text-cf-fg">{item.title}</h3>
+                    <p className="mt-1 text-sm text-cf-muted">{item.text}</p>
+                  </div>
+                  <Button className="mt-4" variant="secondary" icon={item.icon} loading={exporting === item.key} disabled={!summary && item.key !== 'ledger'} onClick={item.action}>
+                    {item.key === 'print' ? 'Print report' : 'Download'}
+                  </Button>
                 </div>
-                <Button className="mt-4" variant="secondary" icon={item.icon} loading={exporting === item.key} disabled={!summary && item.key !== 'ledger'} onClick={item.action}>
-                  {item.key === 'print' ? 'Print report' : 'Download'}
-                </Button>
-              </div>
-            ))}
-          </div>
-        </DataCardBody>
-      </DataCard>
+              ))}
+            </div>
+          </DataCardBody>
+        </DataCard>
+      )}
     </div>
   );
 }

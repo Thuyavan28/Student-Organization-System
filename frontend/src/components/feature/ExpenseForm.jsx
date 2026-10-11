@@ -3,7 +3,6 @@ import { LuCloudUpload } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { expensesApi } from '../../api/expenses.api';
 import { eventsApi } from '../../api/events.api';
-import { fundraisersApi } from '../../api/fundraisers.api';
 import { useFetch } from '../../hooks/useFetch';
 import { useToast } from '../../context/ToastContext';
 import { EXPENSE_CATEGORIES, humanize } from '../../utils/constants';
@@ -35,7 +34,6 @@ export default function ExpenseForm({ onSubmitted }) {
   const [saving, setSaving] = useState(false);
 
   const events = useFetch(() => eventsApi.list({ pageSize: 100 }), []);
-  const fundraisers = useFetch(() => fundraisersApi.list({ pageSize: 100 }), []);
 
   const set = (name) => (event) => setValues((current) => ({ ...current, [name]: event.target.value }));
 
@@ -50,7 +48,6 @@ export default function ExpenseForm({ onSubmitted }) {
     form.append('amount', String(toPaise(values.amount)));
     form.append('description', values.description.trim());
     if (values.linkType === 'event') form.append('eventId', values.linkId);
-    if (values.linkType === 'fundraiser') form.append('fundraiserId', values.linkId);
     if (receipt) form.append('receipt', receipt);
 
     setSaving(true);
@@ -68,7 +65,7 @@ export default function ExpenseForm({ onSubmitted }) {
     }
   };
 
-  const linkOptions = values.linkType === 'event' ? events.data : values.linkType === 'fundraiser' ? fundraisers.data : [];
+  const linkOptions = values.linkType === 'event' ? events.data : [];
 
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
@@ -109,12 +106,11 @@ export default function ExpenseForm({ onSubmitted }) {
           placeholder="General club expense"
           options={[
             { value: 'event', label: 'An event' },
-            { value: 'fundraiser', label: 'A fundraiser' },
           ]}
         />
         {values.linkType && (
           <Select
-            label={values.linkType === 'event' ? 'Event' : 'Fundraiser'}
+            label="Event"
             value={values.linkId}
             onChange={set('linkId')}
             placeholder="Select"

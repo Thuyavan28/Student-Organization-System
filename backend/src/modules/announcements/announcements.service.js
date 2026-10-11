@@ -1,4 +1,6 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
+import { whereAll } from '../../utils/sql.js';
 import { notFound } from '../../utils/apiError.js';
 import * as cache from '../../utils/memoryCache.js';
 import { sendBulkEmail } from '../../utils/mailer.js';
@@ -44,18 +46,24 @@ export const announcementsService = {
     const where = { archivedAt: null, audience: { in: audiences } };
     // The feed is the same for everyone who may see the same audiences, so it is cached per audience set.
     return cache.wrap(`announcements:feed:${audiences.join(',')}:${page.skip}:${page.take}`, FEED_TTL_SECONDS, async () => {
-      const [rows, total] = await Promise.all([
-        prisma.announcement.findMany({
-          where,
-          include: { author: authorSelect },
-          orderBy: [{ isPinned: 'desc' }, { publishedAt: 'desc' }],
-          skip: page.skip,
-          take: page.take,
-        }),
-        prisma.announcement.count({ where }),
-      ]);
-      return paginated(rows, total, page);
-    });
+      // One statement: the page of announcements with their author and the overall total.
+      const rows = await prisma.$queryRaw`
+        SELECT a.id, a.title, a.body, a.audience::text AS audience, a.author_id AS "authorId", a.is_pinned AS "isPinned",
+               a.email_sent AS "emailSent", a.email_recipient_count AS "emailRecipientCount",
+               a.published_at AS "publishedAt", a.archived_at AS "archivedAt", a.created_at AS "createdAt", a.updated_at AS "updatedAt",
+               u.name AS "authorName", COUNT(*) OVER()::int AS "totalRows"
+        FROM announcements a
+        JOIN users u ON u.id = a.author_id
+        WHERE a.archived_at IS NULL AND a.audience::text IN (${Prisma.join(audiences)})
+        ORDER BY a.is_pinned DESC, a.published_at DESC, a.id DESC
+        LIMIT ${page.take} OFFSET ${page.skip}`;
+      let total = rows[0]?.totalRows ?? 0;
+      if (rows.length === 0 && page.skip > 0) {
+        const [{ count }] = await prisma.$queryRaw`SELECT COUNT(*)::int AS count FROM announcements a WHERE a.archived_at IS NULL AND a.audience::text IN (${Prisma.join(audiences)})`;
+        total = count;
+      }
+      return paginated(rows.map(({ authorName, totalRows: _t, ...row }) => ({ ...row, author: { id: row.authorId, name: authorName } })), total, page);
+    }, { staleSeconds: FEED_TTL_SECONDS });
   },
 
   async history(query) {

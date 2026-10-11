@@ -210,10 +210,10 @@ export default function Staff() {
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Treasurers" value={count((u) => u.role === 'TREASURER')} sub="Finance access" icon={LuShieldCheck} />
-        <StatCard label="Volunteers" value={count((u) => u.role === 'VOLUNTEER')} sub="Check-in and tasks" icon={LuUsers} />
-        <StatCard label="Active" value={count((u) => u.isActive)} sub="Can log in" icon={LuUserCheck} />
-        <StatCard label="Deactivated" value={count((u) => !u.isActive)} sub="Login blocked" icon={LuUserX} />
+        <StatCard label="Treasurers" value={count((u) => u.role === 'TREASURER')} sub="Finance access" icon={LuShieldCheck} loading={all.loading && !all.data} />
+        <StatCard label="Volunteers" value={count((u) => u.role === 'VOLUNTEER')} sub="Check-in and expenses" icon={LuUsers} loading={all.loading && !all.data} />
+        <StatCard label="Active" value={count((u) => u.isActive)} sub="Can log in" icon={LuUserCheck} loading={all.loading && !all.data} />
+        <StatCard label="Deactivated" value={count((u) => !u.isActive)} sub="Login blocked" icon={LuUserX} loading={all.loading && !all.data} />
       </div>
 
       <Card padded={false}>

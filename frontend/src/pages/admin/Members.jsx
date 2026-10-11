@@ -18,7 +18,6 @@ import Pagination from '../../components/ui/Pagination';
 import Select from '../../components/ui/Select';
 import StatCard from '../../components/ui/StatCard';
 import { Table, Thead, Th, Tbody, Tr, Td } from '../../components/ui/Table';
-import StatCardSkeleton from '../../components/ui/skeletons/StatCardSkeleton';
 import TableSkeleton from '../../components/ui/skeletons/TableSkeleton';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -114,7 +113,7 @@ export default function Members() {
   const [reminding, setReminding] = useState(false);
   const dq = useDebounce(q, 350);
 
-  const params = { q: dq || undefined, status: status || undefined, page, limit: 15 };
+  const params = { q: dq || undefined, status: status || undefined, page, pageSize: 10 };
   const { data: listData, isLoading, error, refetch } = useMembersList(params);
   const { data: statsData, isLoading: statsLoading } = useMembersStats();
   const { data: tiersData } = useMembershipTiers();
@@ -165,15 +164,11 @@ export default function Members() {
       />
 
       {/* Stats */}
-      {statsLoading && !stats ? (
-        <StatCardSkeleton count={3} />
-      ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-6">
-          <StatCard label="Total members" value={totalMembers} icon={LuUsers} />
-          <StatCard label="Active" value={activeMembers} icon={LuUsers} tone="success" />
-          <StatCard label="Expiring in 30 days" value={expiringMembers} icon={LuUsers} tone="warning" />
-        </div>
-      )}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-6">
+        <StatCard label="Total members" value={totalMembers} icon={LuUsers} loading={statsLoading && !stats} />
+        <StatCard label="Active" value={activeMembers} icon={LuUsers} tone="success" loading={statsLoading && !stats} />
+        <StatCard label="Expiring in 30 days" value={expiringMembers} icon={LuUsers} tone="warning" loading={statsLoading && !stats} />
+      </div>
 
       {/* filter */}
       <FilterCard className="mb-6">

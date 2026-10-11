@@ -56,7 +56,6 @@ async function main() {
   if (!admin.token) throw new Error('Admin login failed. Is the API running and seeded?');
 
   const eventId = (await firstId('/events?status=PUBLISHED&pageSize=5', admin.token)) ?? 1;
-  const fundraiserId = (await firstId('/fundraisers?pageSize=5', admin.token)) ?? 1;
 
   // Warm the server and its database connection so the figures describe steady state.
   await call('/health', null);
@@ -81,9 +80,6 @@ async function main() {
     ['products', '/products', null],
     ['orders', '/orders?pageSize=15', admin.token],
     ['orders/my', '/orders/my', admin.token],
-    ['fundraisers', '/fundraisers', admin.token],
-    ['fundraiser summary', `/fundraisers/${fundraiserId}/summary`, admin.token],
-    ['tasks', `/tasks?fundraiserId=${fundraiserId}`, admin.token],
     ['expenses', '/expenses?pageSize=15', admin.token],
     ['expenses/my', '/expenses/my', volunteer.token],
     ['transactions', '/transactions?pageSize=15', admin.token],

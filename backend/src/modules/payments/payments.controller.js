@@ -3,7 +3,7 @@ import { paymentsService } from './payments.service.js';
 
 export const paymentsController = {
   createSession: asyncHandler(async (req, res) => {
-    res.status(201).json({ data: paymentsService.createSession(req.body) });
+    res.status(201).json({ data: paymentsService.createSession(req.body, req.user.id) });
   }),
 
   getSession: asyncHandler(async (req, res) => {

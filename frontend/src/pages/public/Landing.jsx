@@ -8,7 +8,7 @@ import {
   LuCircleCheck,
   LuClock,
   LuDollarSign,
-  LuHeart,
+  LuFileText,
   LuMapPin,
   LuQrCode,
   LuShoppingBag,
@@ -37,7 +37,7 @@ const FEATURES = [
   { icon: LuSquareCheck, title: 'Instant check-in', text: 'Volunteers scan the QR at the door and see at once if the guest is an active member.' },
   { icon: LuBell, title: 'Announcements', text: 'Post once, reach every member, and keep a permanent record of what was said.' },
   { icon: LuShoppingBag, title: 'Merchandise', text: 'Pick a size, order from your phone and never oversell: stock is tracked per size.' },
-  { icon: LuHeart, title: 'Fundraisers', text: 'Split work into tasks, assign volunteers and watch progress toward the goal.' },
+  { icon: LuFileText, title: 'Expense claims', text: 'Volunteers claim what they spent and treasurers approve it in one place.' },
   { icon: LuDollarSign, title: 'Transparent money', text: 'Every payment and reimbursed expense lands in one ledger the treasurer can trust.' },
   { icon: LuTicket, title: 'Member pricing', text: 'The right price is applied automatically the moment you log in as a member.' },
 ];
@@ -50,7 +50,7 @@ const STEPS = [
 
 const ROLES = [
   { icon: LuUsers, title: 'Members', points: ['Book tickets at member prices', 'Order merchandise by size', 'Keep every ticket and order in one place'] },
-  { icon: LuSquareCheck, title: 'Volunteers', points: ['Scan tickets at the door', 'See member status instantly', 'Pick up fundraiser tasks'] },
+  { icon: LuSquareCheck, title: 'Volunteers', points: ['Scan tickets at the door', 'See member status instantly', 'Pick up event tasks and claim expenses'] },
   { icon: LuDollarSign, title: 'Treasurers', points: ['Track income and expenses', 'Approve reimbursement claims', 'Read one trusted ledger'] },
   { icon: LuZap, title: 'Admins', points: ['Run events and announcements', 'Manage members and stock', 'Monitor the whole club live'] },
 ];

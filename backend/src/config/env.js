@@ -14,6 +14,13 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional().default(''),
   SMTP_PASS: z.string().optional().default(''),
   // Optional. When set (for example redis://127.0.0.1:6379) responses are cached in Redis; empty means in-memory only.
+  // YEAR_END: every membership runs to 31 December. ROLLING: it lasts the tier's duration from the payment date.
+  MEMBERSHIP_EXPIRY: z.enum(['YEAR_END', 'ROLLING']).default('YEAR_END'),
+  // Joining within this many days of 31 December covers the following year too (so a November joiner is not charged for a few weeks).
+  MEMBERSHIP_GRACE_DAYS: z.coerce.number().int().min(0).max(365).default(60),
+  // When true, tickets and merchandise can only be bought with an approved payment session (see payments.service.js).
+  // Off in tests so the existing suites can place orders directly.
+  REQUIRE_PAYMENT_PROOF: z.enum(['true', 'false']).default(process.env.NODE_ENV === 'test' ? 'false' : 'true').transform((value) => value === 'true'),
   REDIS_URL: z.string().optional().default(''),
   GOOGLE_CLIENT_ID: z.string().optional().default(''),
   MAIL_FROM: z.string().default('ClubFlow <no-reply@skyline.example.com>'),

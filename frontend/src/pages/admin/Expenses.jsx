@@ -84,7 +84,7 @@ export default function Expenses() {
       render: (row) => (
         <div>
           <p className="font-medium text-cf-fg">{row.submittedBy?.name}</p>
-          <p className="text-xs text-cf-muted">{row.event?.title ?? row.fundraiser?.title ?? 'General'}</p>
+          <p className="text-xs text-cf-muted">{row.event?.title ?? 'General'}</p>
         </div>
       ),
     },

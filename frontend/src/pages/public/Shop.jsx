@@ -96,10 +96,10 @@ export default function Shop() {
     setPayModalOpen(true);
   };
 
-  const checkout = async () => {
+  const checkout = async (paymentMeta) => {
     setPlacing(true);
     try {
-      await ordersApi.create(cart.map((line) => ({ variantId: line.variantId, quantity: line.quantity })));
+      await ordersApi.create(cart.map((line) => ({ variantId: line.variantId, quantity: line.quantity })), paymentMeta?.sessionId);
       queryClient.invalidateQueries({ queryKey: ['useFetch'] });
       queryClient.invalidateQueries({ queryKey: ['admin-orders-list'] });
       queryClient.invalidateQueries({ queryKey: ['my-orders-list'] });
@@ -260,8 +260,8 @@ export default function Shop() {
 
         {filteredProducts.length > 0 && (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} onAdd={addToCart} />
+            {filteredProducts.map((product, index) => (
+              <ProductCard key={product.id} product={product} onAdd={addToCart} priority={index < 4} />
             ))}
           </div>
         )}

@@ -1,4 +1,6 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
+import { likePattern, whereAll } from '../../utils/sql.js';
 import { badRequest, conflict, notFound } from '../../utils/apiError.js';
 import * as cache from '../../utils/memoryCache.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
@@ -7,6 +9,7 @@ import { membershipsService } from '../memberships/memberships.service.js';
 import { scheduleProblems } from './events.schema.js';
 
 const EVENTS_LIST_TTL_SECONDS = 30;
+const EVENTS_LIST_STALE_SECONDS = 30;
 
 function invalidateEvents() {
   cache.delByPrefix('events:');
@@ -121,60 +124,90 @@ async function cancelEvent(event, actor) {
   });
 }
 
+// Event columns plus the confirmed-booking count, so seat numbers come back in the same statement as the event.
+const EVENT_COLUMNS = Prisma.sql`
+  e.id, e.title, e.description, e.venue, e.start_at AS "startAt", e.end_at AS "endAt",
+  e.booking_opens_at AS "bookingOpensAt", e.booking_closes_at AS "bookingClosesAt", e.capacity,
+  e.member_price AS "memberPrice", e.non_member_price AS "nonMemberPrice", e.status::text AS status,
+  e.banner_url AS "bannerUrl", e.created_at AS "createdAt", e.updated_at AS "updatedAt",
+  (SELECT COUNT(*)::int FROM bookings bk WHERE bk.event_id = e.id AND bk.status = 'CONFIRMED') AS "bookedCount"`;
+
+const withSeatsRow = (event) => ({ ...event, seatsRemaining: Math.max(0, event.capacity - event.bookedCount) });
+
+async function eventWithSeats(id) {
+  const [row] = await prisma.$queryRaw`SELECT ${EVENT_COLUMNS} FROM events e WHERE e.id = ${id}`;
+  return row ? withSeatsRow(row) : null;
+}
+
 export const eventsService = {
   report,
 
   async list(query, user) {
     const page = parsePagination(query, 12);
     const now = new Date();
-    const where = {};
+    const c = [];
     if (isManager(user)) {
-      if (query.status) where.status = query.status;
+      if (query.status) c.push(Prisma.sql`e.status = ${query.status}::event_status`);
+    } else if (query.status && PUBLIC_STATUSES.includes(query.status)) {
+      c.push(Prisma.sql`e.status = ${query.status}::event_status`);
     } else {
-      where.status = query.status && PUBLIC_STATUSES.includes(query.status) ? query.status : { in: PUBLIC_STATUSES };
+      c.push(Prisma.sql`e.status IN ('PUBLISHED', 'COMPLETED')`);
     }
     // "Upcoming" is what a visitor can still book, so it is always published events that have not started.
     if (query.upcoming) {
-      where.startAt = { gt: now };
-      where.status = 'PUBLISHED';
+      c.length = 0;
+      c.push(Prisma.sql`e.start_at > ${now}`, Prisma.sql`e.status = 'PUBLISHED'`);
     }
-    if (query.q) where.OR = [{ title: { contains: query.q, mode: 'insensitive' } }, { venue: { contains: query.q, mode: 'insensitive' } }];
+    if (query.q) c.push(Prisma.sql`(e.title ILIKE ${likePattern(query.q)} OR e.venue ILIKE ${likePattern(query.q)})`);
+    const direction = query.upcoming ? Prisma.raw('ASC') : Prisma.raw('DESC');
 
-    // The key is built from the request, not from `where`, because `where` holds the current time and would never repeat.
+    // The key is built from the request, not from the conditions, because they hold the current time and would never repeat.
     // The list contains nothing user specific, so managers and visitors can share cached pages. Bookings and
     // event changes drop the cache (invalidateEvents), and the short TTL covers anything else, such as an event starting.
     const cacheKey = `events:list:${JSON.stringify({ manager: isManager(user), q: query.q, status: query.status, upcoming: Boolean(query.upcoming), skip: page.skip, take: page.take })}`;
     return cache.wrap(cacheKey, EVENTS_LIST_TTL_SECONDS, async () => {
-      // Counts depend on the rows, but the total does not, so it runs alongside the rows instead of after them.
-      const [rows, total] = await Promise.all([
-        prisma.event.findMany({ where, orderBy: { startAt: query.upcoming ? 'asc' : 'desc' }, skip: page.skip, take: page.take }),
-        prisma.event.count({ where }),
-      ]);
-      const counts = await bookedCounts(rows.map((event) => event.id));
-      return paginated(rows.map((event) => withSeats(event, counts)), total, page);
-    });
+      // One statement: the page of events, each with its seat count, and the overall total.
+      const rows = await prisma.$queryRaw`
+        SELECT ${EVENT_COLUMNS}, COUNT(*) OVER()::int AS "totalRows"
+        FROM events e
+        ${whereAll(c)}
+        ORDER BY e.start_at ${direction}, e.id ${direction}
+        LIMIT ${page.take} OFFSET ${page.skip}`;
+      let total = rows[0]?.totalRows ?? 0;
+      if (rows.length === 0 && page.skip > 0) {
+        const [{ count }] = await prisma.$queryRaw`SELECT COUNT(*)::int AS count FROM events e ${whereAll(c)}`;
+        total = count;
+      }
+      return paginated(rows.map(({ totalRows: _t, ...event }) => withSeatsRow(event)), total, page);
+    }, { staleSeconds: EVENTS_LIST_STALE_SECONDS });
   },
 
   async get(id, user) {
-    // All four lookups are independent, so they share one database round trip instead of three in a row.
-    const [event, counts, member, booking] = await Promise.all([
-      requireEvent(id),
-      bookedCounts([id]),
-      user ? prisma.member.findUnique({ where: { userId: user.id } }) : null,
+    // The event (with seats), the viewer's membership and the viewer's booking are independent, so they share one round trip.
+    const [event, member, booking] = await Promise.all([
+      eventWithSeats(id),
       user
-        ? prisma.booking.findFirst({
-            where: { eventId: id, userId: user.id },
-            orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-            select: { id: true, status: true, priceAtBooking: true, ticket: { select: { token: true, status: true } } },
-          })
+        ? prisma.$queryRaw`SELECT membership_status::text AS "membershipStatus", expires_at AS "expiresAt" FROM members WHERE user_id = ${user.id}`.then((r) => r[0] ?? null)
+        : null,
+      user
+        ? prisma.$queryRaw`
+            SELECT b.id, b.status::text AS status, b.price_at_booking AS "priceAtBooking",
+                   t.token AS "ticketToken", t.status::text AS "ticketStatus"
+            FROM bookings b LEFT JOIN tickets t ON t.booking_id = b.id
+            WHERE b.event_id = ${id} AND b.user_id = ${user.id}
+            ORDER BY b.status ASC, b.created_at DESC
+            LIMIT 1`.then((r) => r[0] ?? null)
         : null,
     ]);
+    if (!event) throw notFound('Event not found');
     if (!isManager(user) && !PUBLIC_STATUSES.includes(event.status)) throw notFound('Event not found');
-    const result = withSeats(event, counts);
-    if (!user) return result;
+    if (!user) return event;
 
     const { price, isMemberPrice } = priceFor(event, membershipsService.isActiveMember(member));
-    return { ...result, yourPrice: price, isMemberPrice, yourBooking: booking };
+    const yourBooking = booking
+      ? { id: booking.id, status: booking.status, priceAtBooking: booking.priceAtBooking, ticket: booking.ticketToken ? { token: booking.ticketToken, status: booking.ticketStatus } : null }
+      : null;
+    return { ...event, yourPrice: price, isMemberPrice, yourBooking };
   },
 
   async create(body, user) {
@@ -230,35 +263,41 @@ export const eventsService = {
   },
 
   async listBookings(id, query) {
-    await requireEvent(id);
     const page = parsePagination(query, 15);
-    const where = { eventId: id };
-    if (query.status) where.status = query.status;
-    if (query.checkedIn !== undefined) where.ticket = { is: { checkIn: query.checkedIn ? { isNot: null } : { is: null } } };
-    if (query.q) {
-      where.user = {
-        OR: [{ name: { contains: query.q, mode: 'insensitive' } }, { email: { contains: query.q, mode: 'insensitive' } }],
-      };
-    }
-    const [rows, total] = await Promise.all([
-      prisma.booking.findMany({
-        where,
-        include: {
-          user: { select: { id: true, name: true, email: true } },
-          ticket: { select: { id: true, token: true, status: true, checkIn: { select: { checkedInAt: true } } } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: page.skip,
-        take: page.take,
-      }),
-      prisma.booking.count({ where }),
+    const c = [Prisma.sql`b.event_id = ${id}`];
+    if (query.status) c.push(Prisma.sql`b.status = ${query.status}::booking_status`);
+    if (query.checkedIn === true) c.push(Prisma.sql`ci.id IS NOT NULL`);
+    if (query.checkedIn === false) c.push(Prisma.sql`t.id IS NOT NULL AND ci.id IS NULL`);
+    if (query.q) c.push(Prisma.sql`(u.name ILIKE ${likePattern(query.q)} OR u.email ILIKE ${likePattern(query.q)})`);
+
+    // The existence check and the page share one round trip; the page is one statement with its total.
+    const [exists, rows] = await Promise.all([
+      prisma.$queryRaw`SELECT 1 AS found FROM events WHERE id = ${id}`,
+      prisma.$queryRaw`
+        SELECT b.id, b.event_id AS "eventId", b.user_id AS "userId", b.price_at_booking AS "priceAtBooking",
+               b.discount_applied AS "discountApplied", b.is_member_price AS "isMemberPrice",
+               b.status::text AS status, b.payment_status::text AS "paymentStatus", b.payment_mode::text AS "paymentMode",
+               b.created_at AS "createdAt", b.updated_at AS "updatedAt",
+               u.name AS "userName", u.email AS "userEmail",
+               t.token AS "ticketToken", t.status::text AS "ticketStatus", ci.checked_in_at AS "checkedInAt",
+               COUNT(*) OVER()::int AS "totalRows"
+        FROM bookings b
+        JOIN users u ON u.id = b.user_id
+        LEFT JOIN tickets t ON t.booking_id = b.id
+        LEFT JOIN check_ins ci ON ci.ticket_id = t.id
+        ${whereAll(c)}
+        ORDER BY b.created_at DESC, b.id DESC
+        LIMIT ${page.take} OFFSET ${page.skip}`,
     ]);
-    const data = rows.map(({ ticket, ...booking }) => ({
-      ...booking,
-      ticketToken: ticket?.token ?? null,
-      ticketStatus: ticket?.status ?? null,
-      checkedInAt: ticket?.checkIn?.checkedInAt ?? null,
-    }));
+    if (exists.length === 0) throw notFound('Event not found');
+    let total = rows[0]?.totalRows ?? 0;
+    if (rows.length === 0 && page.skip > 0) {
+      const [{ count }] = await prisma.$queryRaw`
+        SELECT COUNT(*)::int AS count FROM bookings b JOIN users u ON u.id = b.user_id
+        LEFT JOIN tickets t ON t.booking_id = b.id LEFT JOIN check_ins ci ON ci.ticket_id = t.id ${whereAll(c)}`;
+      total = count;
+    }
+    const data = rows.map(({ userName, userEmail, totalRows: _t, ...row }) => ({ ...row, user: { id: row.userId, name: userName, email: userEmail } }));
     return paginated(data, total, page);
   },
 };

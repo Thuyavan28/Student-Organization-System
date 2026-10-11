@@ -1,6 +1,19 @@
+import { env } from '../../config/env.js';
 import { prisma } from '../../config/prisma.js';
 import * as cache from '../../utils/memoryCache.js';
 import { conflict, notFound } from '../../utils/apiError.js';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// When a membership paid at `periodStart` ends. In YEAR_END mode that is the last moment of 31 December (UTC); if
+// `periodStart` is already within `graceDays` of the year end (a late joiner, or a renewal that starts exactly at the
+// current expiry on 31 December) it runs to the end of the following year instead.
+export function membershipEnd(periodStart, durationMonths, { mode = env.MEMBERSHIP_EXPIRY, graceDays = env.MEMBERSHIP_GRACE_DAYS } = {}) {
+  if (mode !== 'YEAR_END') return addMonths(periodStart, durationMonths);
+  const year = periodStart.getUTCFullYear();
+  const endOfYear = Date.UTC(year, 11, 31, 23, 59, 59, 999);
+  return new Date(endOfYear - periodStart.getTime() < graceDays * DAY_MS ? Date.UTC(year + 1, 11, 31, 23, 59, 59, 999) : endOfYear);
+}
 
 function addMonths(date, months) {
   const result = new Date(date);
@@ -30,7 +43,7 @@ async function findTier(tx, tierId) {
 async function recordDuesPayment(tx, member, tier, actorId) {
   const now = new Date();
   const periodStart = member.expiresAt && member.expiresAt > now ? member.expiresAt : now;
-  const periodEnd = addMonths(periodStart, tier.durationMonths);
+  const periodEnd = membershipEnd(periodStart, tier.durationMonths);
   const payment = await tx.membershipPayment.create({
     data: {
       memberId: member.id, tierId: tier.id, amount: tier.duesAmount, paymentMode: 'SIMULATED',
@@ -71,7 +84,7 @@ export const membershipsService = {
 
   // Tiers change rarely and are read on many screens, so they are cached for five minutes.
   listTiers() {
-    return cache.wrap('tiers:all', TIERS_TTL_SECONDS, () => prisma.membershipTier.findMany({ orderBy: { duesAmount: 'asc' } }));
+    return cache.wrap('tiers:all', TIERS_TTL_SECONDS, () => prisma.membershipTier.findMany({ orderBy: { duesAmount: 'asc' } }), { staleSeconds: 120 });
   },
 
   async createTier(body) {

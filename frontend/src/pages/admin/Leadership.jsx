@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { LuAward, LuPlus } from 'react-icons/lu';
 import { apiErrorMessage, apiFieldErrors } from '../../api/axiosInstance';
 import { leadershipApi } from '../../api/leadership.api';
-import { tasksApi } from '../../api/tasks.api';
+import { usersApi } from '../../api/users.api';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Card, { PageHeader } from '../../components/ui/Card';
@@ -89,7 +89,7 @@ export default function Leadership() {
   const isAdmin = hasRole('ADMIN');
   const [adding, setAdding] = useState(false);
   const { data, loading, error, reload } = useFetch(() => leadershipApi.list({ all: isAdmin ? true : undefined }), [isAdmin]);
-  const users = useFetch(() => tasksApi.assignees({}), [], { enabled: isAdmin });
+  const users = useFetch(() => usersApi.search({}), [], { enabled: isAdmin });
 
   const toggle = async (row) => {
     try {

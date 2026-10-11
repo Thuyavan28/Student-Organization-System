@@ -1,6 +1,7 @@
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
-import { notFound, badRequest } from '../../utils/apiError.js';
+import { env } from '../../config/env.js';
+import { ApiError, notFound, badRequest } from '../../utils/apiError.js';
 
 // In-memory sessions map for local mobile scan-and-pay flow
 const sessions = new Map();
@@ -11,8 +12,60 @@ function generateVerificationCode() {
   return `CF-${digits}`;
 }
 
+// Sessions older than their expiry are removed, so the map cannot grow forever and expired sessions cannot be approved.
+function sweepExpired() {
+  const now = Date.now();
+  for (const [id, session] of sessions) if (new Date(session.expiresAt).getTime() <= now) sessions.delete(id);
+}
+setInterval(sweepExpired, 5 * 60 * 1000).unref();
+
+function liveSession(id) {
+  const session = sessions.get(id);
+  if (!session || new Date(session.expiresAt).getTime() <= Date.now()) {
+    sessions.delete(id);
+    throw notFound('Payment session not found or expired');
+  }
+  return session;
+}
+
+const paymentError = (code, message) => new ApiError(402, code, message);
+
+// Server-side proof that a purchase was paid for. A purchase presents a payment session id; the server only accepts it if
+// the session is live, APPROVED (by the payer's phone), created by the same user, for EXACTLY the amount the server itself
+// calculated, and not already used. `claim` marks it in use before the purchase is written (so two simultaneous requests
+// cannot both spend it), `done` finishes it, and `fail` releases it if the purchase is refused (sold out, stock...).
+// Zero-price purchases need no payment. Sessions live in this process's memory, which is fine for a single server.
+function proofFor(sessionId, userId) {
+  let claimed = null;
+  return {
+    required: env.REQUIRE_PAYMENT_PROOF,
+    claim(amount) {
+      if (!env.REQUIRE_PAYMENT_PROOF || amount <= 0) return;
+      if (!sessionId) throw paymentError('PAYMENT_REQUIRED', 'Payment is required. Complete the payment before confirming.');
+      const session = sessions.get(sessionId);
+      if (!session || new Date(session.expiresAt).getTime() <= Date.now()) {
+        throw paymentError('PAYMENT_EXPIRED', 'This payment session has expired. Please start the payment again.');
+      }
+      if (session.userId !== userId) throw paymentError('PAYMENT_NOT_YOURS', 'This payment session belongs to another account.');
+      if (session.status === 'CONSUMED' || session.claimed) throw paymentError('PAYMENT_ALREADY_USED', 'This payment was already used for a purchase.');
+      if (session.status !== 'APPROVED') throw paymentError('PAYMENT_NOT_APPROVED', 'The payment has not been approved yet.');
+      if (session.amount !== amount) throw paymentError('PAYMENT_AMOUNT_MISMATCH', 'The paid amount does not match the price of this purchase.');
+      session.claimed = true;
+      claimed = session;
+    },
+    done() {
+      if (claimed) { claimed.status = 'CONSUMED'; claimed.claimed = false; claimed.updatedAt = new Date().toISOString(); claimed = null; }
+    },
+    fail() {
+      if (claimed) { claimed.claimed = false; claimed = null; }
+    },
+  };
+}
+
 export const paymentsService = {
-  createSession({ amount, title = 'ClubFlow Payment', note = '', payeeName = 'ClubFlow Skyline', type = 'PAYMENT', metadata = {} }) {
+  proofFor,
+
+  createSession({ amount, title = 'ClubFlow Payment', note = '', payeeName = 'ClubFlow Skyline', type = 'PAYMENT', metadata = {} }, userId = null) {
     const id = `ps_${randomBytes(8).toString('hex')}`;
     const verificationCode = generateVerificationCode();
     const now = new Date();
@@ -26,6 +79,8 @@ export const paymentsService = {
       payeeName,
       type,
       metadata,
+      userId,
+      claimed: false,
       status: 'PENDING',
       verificationCode,
       ticketQrData: `CLUBFLOW:TICKET:${verificationCode}:${encodeURIComponent(title)}`,
@@ -39,14 +94,11 @@ export const paymentsService = {
   },
 
   getSession(id) {
-    const session = sessions.get(id);
-    if (!session) throw notFound('Payment session not found or expired');
-    return session;
+    return liveSession(id);
   },
 
   approve(id) {
-    const session = sessions.get(id);
-    if (!session) throw notFound('Payment session not found or expired');
+    const session = liveSession(id);
     if (session.status !== 'PENDING') throw badRequest('SESSION_CLOSED', `Payment session is already ${session.status.toLowerCase()}`);
 
     session.status = 'APPROVED';
@@ -57,8 +109,7 @@ export const paymentsService = {
   },
 
   reject(id) {
-    const session = sessions.get(id);
-    if (!session) throw notFound('Payment session not found or expired');
+    const session = liveSession(id);
     if (session.status !== 'PENDING') throw badRequest('SESSION_CLOSED', `Payment session is already ${session.status.toLowerCase()}`);
 
     session.status = 'REJECTED';

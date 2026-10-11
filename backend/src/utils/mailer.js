@@ -3,14 +3,29 @@ import { env } from '../config/env.js';
 
 let transporter = null;
 
+// Mail is only "configured" when there is a server and, if a user name is set, its password too. Without the password every
+// send would fail, so the app behaves as if mail were off (and says why once) instead of failing on every purchase.
+let warned = false;
+export function isMailConfigured() {
+  if (!env.SMTP_HOST) return false;
+  if (env.SMTP_USER && !env.SMTP_PASS) {
+    if (!warned) {
+      warned = true;
+      console.warn(`[mailer] SMTP_USER is set (${env.SMTP_USER}) but SMTP_PASS is empty: emails are NOT being sent. For Gmail, create an App Password and put it in backend/.env.`);
+    }
+    return false;
+  }
+  return true;
+}
+
 function getTransporter() {
-  if (!env.SMTP_HOST) return null;
+  if (!isMailConfigured()) return null;
   if (!transporter) {
     transporter = nodemailer.createTransport({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465,
-      auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
+      auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS.replace(/\s+/g, '') } : undefined,
     });
   }
   return transporter;

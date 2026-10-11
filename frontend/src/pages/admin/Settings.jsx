@@ -75,7 +75,7 @@ function TierForm({ tier, onClose, onSaved }) {
           <Input label="Merchandise discount (%)" type="number" min="0" max="100" value={form.merchDiscountPercent} onChange={set('merchDiscountPercent')} error={errors.merchDiscountPercent} />
         </div>
         <Input label="Perks" as="textarea" rows={3} value={form.perksText} onChange={set('perksText')} />
-        <p className="text-xs text-cf-muted">Every tier lasts 12 months. Members pay the member price on tickets regardless of tier.</p>
+        <p className="text-xs text-cf-muted">Every membership runs to 31 December (a late-year joiner is covered through the next year as well). Members pay the member price on tickets regardless of tier.</p>
       </form>
     </Modal>
   );

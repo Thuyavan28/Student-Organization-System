@@ -20,7 +20,6 @@ import Select from '../../components/ui/Select';
 import StatCard from '../../components/ui/StatCard';
 import { Table, Thead, Th, Tbody, Tr, Td } from '../../components/ui/Table';
 import Tabs from '../../components/ui/Tabs';
-import StatCardSkeleton from '../../components/ui/skeletons/StatCardSkeleton';
 import TableSkeleton from '../../components/ui/skeletons/TableSkeleton';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -86,7 +85,7 @@ export default function Finance() {
   const dq = useDebounce(q, 350);
   const toast = useToast();
 
-  const params = { q: dq || undefined, type: type || undefined, category: category || undefined, page, limit: 20, sort: 'occurredAt', order: 'desc' };
+  const params = { q: dq || undefined, type: type || undefined, category: category || undefined, page, pageSize: 10, sort: 'occurredAt', order: 'desc' };
   const { data: listData, isLoading, error, refetch } = useTransactionsList(params);
   const { data: summaryData, isLoading: sumLoading } = useFinanceSummary();
 
@@ -123,12 +122,14 @@ export default function Finance() {
     <div>
       <PageHeader
         title="Finance"
-        description="Income, expenses, and ledger"
+        description={isAdmin ? 'Income, expenses, and ledger' : 'Where the club money stands. Read-only view for the team.'}
         actions={
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" icon={LuDownload} onClick={handleExport} loading={exporting}>
-              Export CSV
-            </Button>
+            {isAdmin && (
+              <Button variant="secondary" size="sm" icon={LuDownload} onClick={handleExport} loading={exporting}>
+                Export CSV
+              </Button>
+            )}
             {isAdmin && (
               <Button size="sm" icon={LuPlus} onClick={() => setAddOpen(true)}>
                 Record transaction
@@ -139,15 +140,11 @@ export default function Finance() {
       />
 
       {/* Summary stat cards */}
-      {sumLoading ? (
-        <StatCardSkeleton count={3} />
-      ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-6">
-          <StatCard label="Total income" value={formatCurrency(summary?.income)} icon={LuTrendingUp} tone="success" />
-          <StatCard label="Total expense" value={formatCurrency(summary?.expense)} icon={LuTrendingDown} tone="danger" />
-          <StatCard label="Net balance" value={formatCurrency(summary?.net)} icon={LuDollarSign} tone={summary?.net >= 0 ? 'success' : 'danger'} />
-        </div>
-      )}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 mb-6">
+        <StatCard label="Total income" value={formatCurrency(summary?.income)} icon={LuTrendingUp} tone="success" loading={sumLoading} />
+        <StatCard label="Total expense" value={formatCurrency(summary?.expense)} icon={LuTrendingDown} tone="danger" loading={sumLoading} />
+        <StatCard label="Net balance" value={formatCurrency(summary?.net)} icon={LuDollarSign} tone={summary?.net >= 0 ? 'success' : 'danger'} loading={sumLoading} />
+      </div>
 
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
 
@@ -199,7 +196,6 @@ export default function Finance() {
                       <Td>
                         <p className="text-sm text-cf-fg">{t.description}</p>
                         {t.event && <p className="text-xs text-cf-muted">{t.event.title}</p>}
-                        {t.fundraiser && <p className="text-xs text-cf-muted">{t.fundraiser.title}</p>}
                       </Td>
                       <Td right>
                         <span className={`font-semibold tabular-nums ${t.type === 'INCOME' ? 'text-cf-success' : 'text-cf-accent'}`}>
@@ -253,7 +249,7 @@ export default function Finance() {
         </div>
       )}
 
-      {tab === 'reports' && <FinanceAnalytics />}
+      {tab === 'reports' && <FinanceAnalytics canExport={isAdmin} />}
 
       {addOpen && <AddTransactionModal onClose={() => setAddOpen(false)} onSaved={() => setAddOpen(false)} />}
     </div>

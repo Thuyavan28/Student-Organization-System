@@ -1,22 +1,50 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { badRequest, conflict, forbidden, notFound } from '../../utils/apiError.js';
 import * as cache from '../../utils/memoryCache.js';
 import { paginated, parsePagination } from '../../utils/pagination.js';
+import { likePattern, whereAll } from '../../utils/sql.js';
 
 
 const expenseInclude = {
   submittedBy: { select: { id: true, name: true, email: true } },
   reviewedBy: { select: { id: true, name: true } },
   event: { select: { id: true, title: true } },
-  fundraiser: { select: { id: true, title: true } },
 };
 
-async function assertLinksExist({ eventId, fundraiserId }) {
+async function expensePage(conditions, page) {
+  const rows = await prisma.$queryRaw`
+    SELECT x.id, x.submitted_by_id AS "submittedById", x.event_id AS "eventId",
+           x.category::text AS category, x.amount, x.description, x.receipt_url AS "receiptUrl", x.status::text AS status,
+           x.reviewed_by_id AS "reviewedById", x.review_note AS "reviewNote", x.reimbursed_at AS "reimbursedAt",
+           x.created_at AS "createdAt", x.updated_at AS "updatedAt",
+           s.name AS "submitterName", s.email AS "submitterEmail", r.name AS "reviewerName",
+           e.title AS "eventTitle",
+           COUNT(*) OVER()::int AS "totalRows"
+    FROM expenses x
+    JOIN users s ON s.id = x.submitted_by_id
+    LEFT JOIN users r ON r.id = x.reviewed_by_id
+    LEFT JOIN events e ON e.id = x.event_id
+    ${whereAll(conditions)}
+    ORDER BY x.created_at DESC, x.id DESC
+    LIMIT ${page.take} OFFSET ${page.skip}`;
+  let total = rows[0]?.totalRows ?? 0;
+  if (rows.length === 0 && page.skip > 0) {
+    const [{ count }] = await prisma.$queryRaw`SELECT COUNT(*)::int AS count FROM expenses x JOIN users s ON s.id = x.submitted_by_id ${whereAll(conditions)}`;
+    total = count;
+  }
+  const data = rows.map(({ submitterName, submitterEmail, reviewerName, eventTitle, totalRows: _t, ...row }) => ({
+    ...row,
+    submittedBy: { id: row.submittedById, name: submitterName, email: submitterEmail },
+    reviewedBy: row.reviewedById ? { id: row.reviewedById, name: reviewerName } : null,
+    event: row.eventId ? { id: row.eventId, title: eventTitle } : null,
+  }));
+  return paginated(data, total, page);
+}
+
+async function assertLinksExist({ eventId }) {
   if (eventId && !(await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } }))) {
     throw badRequest('INVALID_EVENT', 'The selected event does not exist');
-  }
-  if (fundraiserId && !(await prisma.fundraiser.findUnique({ where: { id: fundraiserId }, select: { id: true } }))) {
-    throw badRequest('INVALID_FUNDRAISER', 'The selected fundraiser does not exist');
   }
 }
 
@@ -35,32 +63,17 @@ export const expensesService = {
     });
   },
 
-  async listMine(userId, query) {
-    const page = parsePagination(query, 10);
-    const where = { submittedById: userId };
-    const [rows, total] = await Promise.all([
-      prisma.expense.findMany({ where, include: expenseInclude, orderBy: { createdAt: 'desc' }, skip: page.skip, take: page.take }),
-      prisma.expense.count({ where }),
-    ]);
-    return paginated(rows, total, page);
+  // Both lists are one SQL statement: claims, submitter, reviewer, event and the total in a single round trip.
+  listMine(userId, query) {
+    return expensePage([Prisma.sql`x.submitted_by_id = ${userId}`], parsePagination(query, 10));
   },
 
-  async list(query) {
-    const page = parsePagination(query, 12);
-    const where = {};
-    if (query.status) where.status = query.status;
-    if (query.category) where.category = query.category;
-    if (query.q) {
-      where.OR = [
-        { description: { contains: query.q, mode: 'insensitive' } },
-        { submittedBy: { name: { contains: query.q, mode: 'insensitive' } } },
-      ];
-    }
-    const [rows, total] = await Promise.all([
-      prisma.expense.findMany({ where, include: expenseInclude, orderBy: { createdAt: 'desc' }, skip: page.skip, take: page.take }),
-      prisma.expense.count({ where }),
-    ]);
-    return paginated(rows, total, page);
+  list(query) {
+    const c = [];
+    if (query.status) c.push(Prisma.sql`x.status = ${query.status}::expense_status`);
+    if (query.category) c.push(Prisma.sql`x.category = ${query.category}::txn_category`);
+    if (query.q) c.push(Prisma.sql`(x.description ILIKE ${likePattern(query.q)} OR s.name ILIKE ${likePattern(query.q)})`);
+    return expensePage(c, parsePagination(query, 12));
   },
 
   async review(id, { decision, note }, reviewer) {
@@ -86,7 +99,7 @@ export const expensesService = {
             data: {
               type: 'EXPENSE', category: 'REIMBURSEMENT', amount: expense.amount,
               description: `Approved claim: ${expense.description}`,
-              eventId: expense.eventId, fundraiserId: expense.fundraiserId,
+              eventId: expense.eventId,
               sourceType: 'EXPENSE', sourceId: String(expense.id), occurredAt: now, recordedById: reviewer.id,
             },
           });
@@ -119,7 +132,7 @@ export const expensesService = {
           data: {
             type: 'EXPENSE', category: 'REIMBURSEMENT', amount: expense.amount,
             description: `Reimbursement: ${expense.description}`,
-            eventId: expense.eventId, fundraiserId: expense.fundraiserId,
+            eventId: expense.eventId,
             sourceType: 'EXPENSE', sourceId: String(expense.id), occurredAt: now, recordedById: actor.id,
           },
         });

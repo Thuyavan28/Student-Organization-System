@@ -1,4 +1,6 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
+import { whereAll } from '../../utils/sql.js';
 import { conflict, notFound } from '../../utils/apiError.js';
 
 const ROLE_BY_POSITION = { PRESIDENT: 'ADMIN', TREASURER: 'TREASURER' };
@@ -36,12 +38,16 @@ async function assertSingleHolder(tx, position, excludeId) {
 export const leadershipService = {
   async list({ all }, user) {
     const showAll = Boolean(all && user.role === 'ADMIN');
-    const rows = await prisma.leadership.findMany({
-      where: showAll ? {} : { isActive: true },
-      include: { user: userSelect },
-      orderBy: [{ isActive: 'desc' }, { termEnd: 'desc' }, { id: 'asc' }],
-    });
-    return { data: rows };
+    // One statement: officer terms with the person holding each one.
+    const rows = await prisma.$queryRaw`
+      SELECT l.id, l.user_id AS "userId", l.position::text AS position, l.term_start AS "termStart", l.term_end AS "termEnd",
+             l.is_active AS "isActive", l.created_at AS "createdAt", l.updated_at AS "updatedAt",
+             u.name AS "userName", u.email AS "userEmail", u.role::text AS "userRole"
+      FROM leadership l
+      JOIN users u ON u.id = l.user_id
+      ${showAll ? Prisma.empty : Prisma.sql`WHERE l.is_active = TRUE`}
+      ORDER BY l.is_active DESC, l.term_end DESC, l.id ASC`;
+    return { data: rows.map(({ userName, userEmail, userRole, ...row }) => ({ ...row, user: { id: row.userId, name: userName, email: userEmail, role: userRole } })) };
   },
 
   create(body) {

@@ -11,7 +11,6 @@ const filters = {
   type: type.optional(),
   category: category.optional(),
   eventId: id.optional(),
-  fundraiserId: id.optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
   q: z.string().trim().max(100).optional(),
@@ -35,5 +34,4 @@ export const createTransactionSchema = z.object({
   description: z.string().trim().min(3).max(300),
   occurredAt: z.coerce.date().optional(),
   eventId: id.optional(),
-  fundraiserId: id.optional(),
 });
